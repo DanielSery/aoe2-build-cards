@@ -79,7 +79,13 @@ async function ask<T>(path: string, init?: RequestInit): Promise<T> {
 export const lookUpGame = (link: string) =>
   ask<Game>(`api/games?link=${encodeURIComponent(link)}`);
 
-/** A replay file from this computer: the .aoe2record a game saves, or the zip aoe.ms serves. */
+/** What a replay file from this computer is called: the .aoe2record a game
+ *  saves, or the zip aoe.ms serves. */
+export const REPLAY_FILES = ".aoe2record,.zip";
+
+export const isReplay = (file: File) =>
+  REPLAY_FILES.split(",").some((ending) => file.name.toLowerCase().endsWith(ending));
+
 export const openReplay = (file: File) =>
   ask<Game>("api/games/file", { method: "POST", body: file });
 

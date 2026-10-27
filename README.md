@@ -150,7 +150,7 @@ If port 8030 is taken, pick another (`--port 8040`) and open that one instead.
   - **Paste a link** — an aoe2companion or aoe2insights match link, the aoe.ms
     replay link, or the match id.
   - **Open a file** — an `.aoe2record` from your own games (usually under
-    `Games\Age of Empires 2 DE\<your id>\savegame`), or drop it on the dialog.
+    `Games\Age of Empires 2 DE\<your id>\savegame`), or drop it anywhere on the page.
 - Pick a player: their opening opens as a card marked *not saved*. **Save**
   keeps it in your library; reading another player replaces it.
 - **Library…** lists your cards; tick some and press `Ctrl+P` for one PDF.

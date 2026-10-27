@@ -40,7 +40,7 @@ subdirectory (`base` is relative).
   replay link, or just the match id.
 - **Open a file** — a replay on this computer: the `.aoe2record` the game
   saves (usually under `Games\Age of Empires 2 DE\<your id>\savegame`) or the
-  zip aoe.ms downloads. Choose it, or drop it anywhere on the dialog. It goes
+  zip aoe.ms downloads. Choose it, or drop it anywhere on the page. It goes
   only to the reader running on this machine; names, civs and teams come from
   the replay itself.
 

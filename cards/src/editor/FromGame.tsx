@@ -1,10 +1,13 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Game, GamePlayer } from "../model/games";
-import { cardFromGame, lookUpGame, openReplay } from "../model/games";
+import { REPLAY_FILES, cardFromGame, lookUpGame, openReplay } from "../model/games";
 import { FindGame } from "./FindGame";
 
 type Props = {
   open: boolean;
+  /** A replay dropped on the page, to be read as soon as it arrives. Wrapped,
+   *  so the same file dropped twice is read twice. */
+  dropped: { file: File } | null;
   /** Throws when the card cannot be adopted, so the dialog can say so. */
   onImport: (card: unknown) => void;
   onClose: () => void;
@@ -22,7 +25,7 @@ const ages = (player: GamePlayer) =>
 
 /** Stays mounted while closed — `open` only hides it — so a search, its
  *  filters and the game last read are all still there for the next player. */
-export function FromGame({ open, onImport, onClose }: Props) {
+export function FromGame({ open, dropped, onImport, onClose }: Props) {
   const [mode, setMode] = useState<"find" | "link" | "file">("find");
   const chooser = useRef<HTMLInputElement>(null);
   const [link, setLink] = useState("");
@@ -57,6 +60,12 @@ export function FromGame({ open, onImport, onClose }: Props) {
       setMark(null);
       setOnGame(true);
     });
+
+  useEffect(() => {
+    if (!dropped || busy) return;
+    setMode("file");
+    openFile(dropped.file);
+  }, [dropped]);
 
   const take = (player: GamePlayer) => game &&
     run(`Writing ${player.name}'s card…`, async () => onImport(await cardFromGame(game.matchId, player.number)));
@@ -142,12 +151,12 @@ export function FromGame({ open, onImport, onClose }: Props) {
             <p className="hint" style={{ margin: "0 0 10px" }}>
               A replay on this computer: the .aoe2record the game saves — usually under
               Games\Age of Empires 2 DE\&lt;your id&gt;\savegame — or the zip aoe.ms downloads.
-              Choose it, or drop it anywhere on this dialog. It goes only to the reader running here.
+              Choose it, or drop it anywhere on the page. It goes only to the reader running here.
             </p>
             <button className="primary" disabled={busy !== null} onClick={() => chooser.current?.click()}>
               Choose a replay…
             </button>
-            <input ref={chooser} type="file" accept=".aoe2record,.zip" hidden
+            <input ref={chooser} type="file" accept={REPLAY_FILES} hidden
                    onChange={(e) => {
                      const file = e.target.files?.[0];
                      if (file) openFile(file);

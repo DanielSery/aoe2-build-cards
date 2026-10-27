@@ -301,6 +301,27 @@ check(landed === grew + 1 && emptied === 0, "an item drags to another row",
   `row 3 went ${grew} → ${landed}, row 1 left with ${emptied}`);
 await page.click(".topbar button:has-text('Undo')");
 
+// --- a replay dropped on the page -----------------------------------------
+
+// Anywhere on the page, not only on the dialog: it opens Analyze game and
+// reads the file. Nothing reads replays behind the preview, so what comes back
+// is the dialog's error, which is it having tried.
+const dropFile = (types) => page.evaluate((types) => {
+  const data = new DataTransfer();
+  data.items.add(new File(["not a replay"], "game.aoe2record"));
+  const target = document.querySelector(".canvas .card");
+  for (const type of types) target.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data }));
+}, types);
+await dropFile(["dragenter", "dragover"]);
+const overlaid = await page.locator(".file-drop").waitFor({ timeout: 3000 }).then(() => true, () => false);
+await dropFile(["drop"]);
+const analyze = page.locator(".modal-backdrop", { hasText: "Analyze a recorded game" });
+const tried = await analyze.locator(".game-error").waitFor({ timeout: 10000 }).then(() => true, () => false);
+const [cleared, opened] = [await page.locator(".file-drop").count() === 0, await analyze.isVisible()];
+await analyze.locator("button:has-text('Close')").click();
+check(overlaid && cleared && opened && tried, "a replay dropped on the page opens Analyze game and reads it",
+  `overlay shown ${overlaid} and gone ${cleared}, dialog open ${opened}, read ${tried}`);
+
 // --- a row too long for one line ------------------------------------------
 
 // Its move goes to a line of its own, and does not drag every other move on

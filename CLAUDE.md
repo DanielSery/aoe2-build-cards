@@ -205,6 +205,12 @@ Four more rules are easy to break:
   shelf. `dropEffect` in `dragover` has to match the `effectAllowed` the drag
   started with (`copy` for the shelf, `move` for the rest) or the browser
   refuses the drop silently.
+- **A file is dropped on the window, not on the card.** A replay dropped
+  anywhere on the page goes to *Analyze game…* (`App`, listening on
+  `window`), since a browser opens a file dropped where nothing takes it.
+  The dialog takes one dropped on itself, and says so by preventing the
+  default first — that is how the window knows to leave it alone. The card's
+  own drop targets look only for their three types, so a file passes them by.
 - **Nothing is read from storage or a file without `model/migrate.ts`.** A
   card is *drawn*, not validated, so one field an older version did not write
   is an exception in the middle of a render and the page goes white with the

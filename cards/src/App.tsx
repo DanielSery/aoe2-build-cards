@@ -20,6 +20,7 @@ import { cardsToPdf, SHEETS } from "./render/pdf";
 import type { SheetName } from "./render/pdf";
 import { cardToPng } from "./render/png";
 import { FromGame } from "./editor/FromGame";
+import { isReplay } from "./model/games";
 import { Inspector } from "./editor/Inspector";
 import { Library } from "./editor/Library";
 import { Palette } from "./editor/Palette";
@@ -45,6 +46,8 @@ export function App() {
   const [future, setFuture] = useState<Card[]>([]);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showGame, setShowGame] = useState(false);
+  const [dropped, setDropped] = useState<{ file: File } | null>(null);
+  const [fileOver, setFileOver] = useState(false);
   const [unsaved, setUnsaved] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -192,6 +195,43 @@ export function App() {
     return () => {
       window.removeEventListener("dragend", sweep);
       window.removeEventListener("drop", sweep);
+    };
+  }, []);
+
+  // A replay dropped anywhere on the page goes to Analyze game. Taken on the
+  // window, since a browser opens a file dropped where nothing takes it; one
+  // dropped on the dialog is the dialog's, and says so by preventing the
+  // default first. `dragleave` fires for every element left, so the overlay
+  // counts its way back out of the window.
+  useEffect(() => {
+    let inside = 0;
+    const files = (event: DragEvent) => event.dataTransfer?.types.includes("Files") ?? false;
+    const enter = (event: DragEvent) => { if (files(event)) setFileOver(++inside > 0); };
+    const leave = (event: DragEvent) => { if (files(event)) setFileOver(--inside > 0); };
+    const over = (event: DragEvent) => { if (files(event)) event.preventDefault(); };
+    const drop = (event: DragEvent) => {
+      if (!files(event)) return;
+      inside = 0;
+      setFileOver(false);
+      if (event.defaultPrevented) return;
+      event.preventDefault();
+      const file = Array.from(event.dataTransfer?.files ?? []).find(isReplay);
+      if (!file) {
+        alert("Only a replay can be dropped here: the .aoe2record a game saves, or the zip aoe.ms serves.");
+        return;
+      }
+      setDropped({ file });
+      setShowGame(true);
+    };
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("dragover", over);
+    window.addEventListener("drop", drop);
+    return () => {
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("drop", drop);
     };
   }, []);
 
@@ -377,7 +417,8 @@ export function App() {
                  exportingPdf={pdfJob !== null} />
       )}
 
-      <FromGame open={showGame} onImport={importFromGame} onClose={() => setShowGame(false)} />
+      <FromGame open={showGame} dropped={dropped} onImport={importFromGame} onClose={() => setShowGame(false)} />
+      {fileOver && <div className="file-drop">Drop a replay to analyze it</div>}
 
       {/* The card as it will be exported: no editing affordances, no drop
           targets, no zoom, laid out off-screen rather than hidden so it has a
