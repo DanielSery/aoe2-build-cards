@@ -111,9 +111,9 @@ way, drawn small; a move reads right to left.
 | **Source** | the work moved villagers were taken off. No number: *moved to* has it |
 | **Extras** | anything the row only mentions: the deer pushed in, a tech, a note |
 
-The moves line up down the card, and so do the extras. A row too long for
-one line breaks before its move, and then before its extras — never in the
-middle of a column.
+The moves line up down the card, and the extras keep to its right edge. A
+row too long for one line breaks before its move, and then before its extras
+— never in the middle of a column.
 
 Each place holds **icons**, **numbers** and optional **words**. In a place
 with a number, the first icon is the work and every icon after it is drawn

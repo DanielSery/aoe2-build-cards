@@ -51,20 +51,17 @@ and the second column is for moves anywhere else. Each column had a
 *before* place of its own for a while, with its own arrow; a row with a
 building in each was five places and four arrows wide and ran off the card.
 
-**The moves are a column, and so are the extras.** Every row with anything
-after its new villagers has that column as wide as the widest such on the
-card, and every row with extras has its moves' column as wide as the widest
-such, so every move starts at one x and every row's extras at another
-(`CardView.useColumns`, CSS variables on the card itself, so the off-screen
-copy measures its own). A row with nothing after a column is left out of
-its measure, or one age-up label would push every move on the card to the
-right; so is a row that would not fit on one line even so. A row that does
-not fit breaks between its columns — the move, then the extras, go to a line
-of their own (`.step-body` wraps) — and never inside a column. Lining the
-extras up on their left once ran a card off its own edge; it fits since the
-rows lost their numbers, and the wrap is what keeps the odd long row on the
-card. Measured rather than a CSS grid, because the rows sit in separate
-phase boxes.
+**The moves are a column, and the extras keep to the right edge.** Every
+row with a move has its new villagers' column as wide as the widest such on
+the card, so every move starts at one x (`CardView.useColumns`, a CSS
+variable on the card itself, so the off-screen copy measures its own). A row
+with no move is left out of the measure, or one age-up label would push every
+move on the card to the right; so is a row whose move would not fit beside it
+even so. A row that does not fit breaks between its columns — the move, then
+the extras, go to a line of their own (`.step-body` wraps) — and never inside
+a column. The extras were lined up on their left as a third column for a
+while; they are back at the right edge, as asked. Measured rather than a CSS
+grid, because the rows sit in separate phase boxes.
 
 **A row has no number.** The circle in front of every row counted rows, or
 the villagers at work, and took 66px off every row of a 1040px card for a
@@ -451,11 +448,15 @@ and `npm run preview` proxy `/api` to it.
   the exception keeps 40 of those steps and 21 of the rows.
 - **A row's new villagers are the first column, its moved ones the second
   — unless they went to the same place.** Three off the sheep and one new to
-  the hunt is "4 hunt ← 3 sheep", one place. New villagers to one place and a
-  move to another at the same time are one row — "2 wood", "2 boar ← sheep",
-  "2 deer", or "4 hunt ← 3 sheep", "1 wood ← berries" — unless the first
-  column names the move's source or destination, where counting the move
-  first would be the wrong order (`_paired`). A move joins the latest move row
+  the hunt is "4 hunt ← 3 sheep", one place. A move shares the row beside it
+  whenever that row has nothing in its second column — new villagers, a
+  joined move, or a Town Centre tech — however far apart in time, since
+  nothing on the card comes between them: "3 boar" and "1 berries ← boar" are
+  one row, and so are Loom and the move after it (`_paired`). Not where the
+  move goes to a work the first column names: the move is counted first, so
+  the figure under it would miss what the first column then does there. That
+  leaves about 29% of rows a move alone, down from 33%: mostly one move after
+  another, as in a Going band, where no villager is new. A move joins the latest move row
   of the phase when it is the same move, however long after, so "1 farm ←
   sheep" and then "2 farm ← sheep" are "3 farm ← sheep". A new villager reaching the same place within
   `MERGE` seconds of a move is folded into it, which makes the lure and the

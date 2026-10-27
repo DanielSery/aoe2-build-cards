@@ -125,14 +125,17 @@ check(numberRight === iconLeft && wayTile < workTile,
   "a number touches its icon, and what is done on the way is small",
   `the number ends at ${numberRight} and the icon starts at ${iconLeft}; tiles ${workTile} and ${wayTile}px`);
 
-// Three columns: every move starts at one x, and so does every row's extras.
+// Three columns: every move starts at one x, and every row's extras end at the right edge.
 const edgesOf = (rows, part, edge) => page.locator(`.export-copy .card ${rows}`).evaluateAll((els, [part, edge]) =>
   els.map((e) => Math.round(e.querySelector(part).getBoundingClientRect()[edge])), [part, edge]);
 const moveLefts = await edgesOf(".step--moves", ".column--move .slot", "left");
-const extrasLefts = await edgesOf(".step--extras", ".extras", "left");
-check(moveLefts.length === 3 && new Set(moveLefts).size === 1 && extrasLefts.length === 2 && new Set(extrasLefts).size === 1,
-  "moves and extras each form a column",
-  `moves started at ${moveLefts.join(", ")} and extras at ${extrasLefts.join(", ")}`);
+const extrasRights = await edgesOf(".step--extras", ".extras", "right");
+const bodyRight = await page.locator(".export-copy .card .step-body").first().evaluate(
+  (e) => Math.round(e.getBoundingClientRect().right));
+check(moveLefts.length === 3 && new Set(moveLefts).size === 1 && extrasRights.length === 2
+  && extrasRights.every((right) => right === bodyRight),
+  "moves form a column, and the extras keep to the right edge",
+  `moves started at ${moveLefts.join(", ")}; extras ended at ${extrasRights.join(", ")} against ${bodyRight}`);
 
 // --- a caption must not move anything -------------------------------------
 

@@ -242,16 +242,15 @@ function StepRow({ step, section, edit, sums }: {
 }
 
 /**
- * The columns line up down the card: every move starts at one x and every
- * row's extras at another. The new villagers' column is as wide as the widest
- * on the card among rows with anything after it, and the moves' as the widest
- * among rows with extras. Left out of each measure is a row with nothing after
- * the column — one age-up label would push the whole card right — and a row
- * that would not fit on one line even so, since what follows goes to a line
- * of its own.
+ * The moves line up down the card: the new villagers' column is as wide as
+ * the widest on the card among rows with a move after it, so every move starts
+ * at one x. Left out of that measure is a row with no move — one age-up label
+ * would push every move right — and a row whose move would not fit beside it
+ * even so, since the move goes to a line of its own. The extras need no
+ * measure: they keep to the right edge.
  *
  * Measured rather than laid out as a grid, because the rows sit in separate
- * phase boxes; set as variables on the card itself, so the off-screen copy
+ * phase boxes; set as a variable on the card itself, so the off-screen copy
  * the PNG is taken from measures and carries its own.
  */
 function useColumns(card: Card) {
@@ -259,24 +258,15 @@ function useColumns(card: Card) {
   useLayoutEffect(() => {
     const root = node.current;
     if (!root) return;
-    const rows = [...root.querySelectorAll<HTMLElement>(".step-body")].map((body) => {
+    const bodies = [...root.querySelectorAll<HTMLElement>(".step-body")];
+    const gap = bodies.length ? Number.parseFloat(getComputedStyle(bodies[0]).columnGap) || 0 : 0;
+    const widths = bodies.flatMap((body) => {
       const width = (selector: string) => body.querySelector<HTMLElement>(selector)?.offsetWidth ?? 0;
-      const step = body.parentElement!.classList;
-      return { room: body.clientWidth, fresh: width(".column--new > .chain"), move: width(".column--move > .chain"),
-               extras: width(".extras"), moves: step.contains("step--moves"), mentions: step.contains("step--extras") };
+      const [fresh, move] = [width(".column--new > .chain"), width(".column--move > .chain")];
+      const moves = body.parentElement!.classList.contains("step--moves");
+      return moves && fresh + gap + move <= body.clientWidth ? [fresh] : [];
     });
-    const gap = (selector: string) => {
-      const element = root.querySelector<HTMLElement>(selector);
-      return element ? Number.parseFloat(getComputedStyle(element).marginLeft) : 0;
-    };
-    const [beforeMove, beforeExtras] = [gap(".column--move"), gap(".extras")];
-    const widest = (widths: number[]) => (widths.length ? Math.max(...widths) : 0);
-    const fresh = widest(rows.filter((r) => (r.moves || r.mentions) && r.fresh + beforeMove + r.move <= r.room)
-      .map((r) => r.fresh));
-    const move = widest(rows.filter((r) => r.mentions
-      && Math.max(fresh, r.fresh) + beforeMove + r.move + beforeExtras + r.extras <= r.room).map((r) => r.move));
-    root.style.setProperty("--new-column", `${fresh}px`);
-    root.style.setProperty("--move-column", `${move}px`);
+    root.style.setProperty("--new-column", `${widths.length ? Math.max(...widths) : 0}px`);
   }, [card]);
   return node;
 }

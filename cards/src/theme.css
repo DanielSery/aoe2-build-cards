@@ -227,17 +227,15 @@ input.wide, select.wide, textarea.wide { width: 100%; }
  * taken from breaks it the same way; `shot.mjs` checks the PNG's size, which is
  * what would notice if it did not. The row gap leaves a caption room. */
 .chain { display: flex; align-items: center; gap: 12px; }
-.step-body { display: flex; flex-wrap: wrap; align-items: center; row-gap: 22px; flex: 1; min-width: 0; }
-/* The three columns: new villagers, moves, extras. Each of the first two is
- * kept as wide as its widest on the card wherever something follows it
- * (`useColumns`), so the moves and the extras each start at one x. */
+.step-body { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; flex: 1; min-width: 0; }
+/* The three columns: new villagers, moves, extras. The first is kept as wide
+ * as its widest on the card wherever a move follows it (`useColumns`), so the
+ * moves start at one x; the extras keep to the right edge. */
 .column { display: flex; flex: none; }
-:is(.step--moves, .step--extras) .column--new, .card--edit .step .column--new { min-width: var(--new-column, auto); }
-.step--extras .column--move, .card--edit .step .column--move { min-width: var(--move-column, auto); }
-.column--move { margin-left: 22px; }
+.step--moves .column--new, .card--edit .step .column--new { min-width: var(--new-column, auto); }
 .link { display: flex; align-items: center; gap: 12px; }
 .slot { display: flex; align-items: center; gap: 8px; }
-.extras { display: flex; align-items: center; gap: 8px; margin-left: 22px; }
+.extras { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
 .item { display: inline-flex; align-items: center; position: relative; }
 .tile { width: 64px; height: 64px; border: 3px solid #111318; border-radius: 5px;
