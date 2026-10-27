@@ -2,7 +2,7 @@ import type { Card, Part, Where } from "../model/card";
 import { SLOTS } from "../model/card";
 
 const NAMES: Record<Part, string> = {
-  extras: "Extras", to: "End", via: "Before", moveTo: "Moved to", moveVia: "Moved via", from: "Source",
+  extras: "Extras", to: "Goes to", moveTo: "Moved to", from: "Source",
 };
 
 /** What the shelf says it is adding to. */

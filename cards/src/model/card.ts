@@ -1,14 +1,13 @@
 /**
  * The document, and every edit that can be made to it.
  *
- * A row is three columns. The first says what the **new** villagers do, read
- * right to left: where they end up (`to`) and what they do on the way (`via`).
- * The second, the ones **moved** off other work: where they go (`moveTo`), what
- * they do on the way (`moveVia`) and the work they were taken off (`from`) —
- * the number is on the source, since everyone taken off it goes to the same
- * place. The third, `extras`, is what the row merely mentions: the deer pushed
- * in, a tech, a note. Only `to` is always there, and the arrows between places
- * are drawn rather than placed.
+ * A row is three columns. The first is where the **new** villagers go (`to`).
+ * The second, the ones **moved** off other work: where they go (`moveTo`) and
+ * the work they were taken off (`from`), with the number on where they go. The
+ * third, `extras`, is what the row merely mentions: the deer pushed in, a
+ * tech, a note. A place is its work and then what is done on the way — "4 boar
+ * house house" — so the first icon is the place and the rest are drawn small.
+ * Only `to` is always there, and the arrow is drawn rather than placed.
  *
  * Everything on a row is an entity with an id: icons, numbers, notes. That is
  * what lets one thing be selected, dragged anywhere and deleted, rather than
@@ -44,14 +43,12 @@ export type PlaceItem = IconItem | CountItem;
 export type Slot = { items: PlaceItem[]; label: string };
 
 /** The named parts of a row. */
-export type Part = "to" | "via" | "moveTo" | "moveVia" | "from" | "extras";
+export type Part = "to" | "moveTo" | "from" | "extras";
 
 export type Step = {
   id: string;
   to: Slot;
-  via: Slot | null;
   moveTo: Slot | null;
-  moveVia: Slot | null;
   from: Slot | null;
   extras: Item[];
 };
@@ -92,15 +89,13 @@ export const TONES: [Tone, string][] = [
 ];
 
 export const SLOTS: [Exclude<Part, "extras">, string, string][] = [
-  ["to", "End", "where new villagers end up"],
-  ["via", "Before", "what they do on the way"],
-  ["moveTo", "Moved to", "where villagers taken off other work go"],
-  ["moveVia", "Moved via", "what they do on the way"],
+  ["to", "Goes to", "number, work, then on the way"],
+  ["moveTo", "Moved to", "number, work, then on the way"],
   ["from", "Source", "the work they were taken off"],
 ];
 
-/** The places of the moved villagers, the right-hand half of a row. */
-export const MOVE_PARTS = ["moveTo", "moveVia", "from"] as const;
+/** The places of the moved villagers, the second column. */
+export const MOVE_PARTS = ["moveTo", "from"] as const;
 
 const id = () => crypto.randomUUID();
 
@@ -112,7 +107,7 @@ export const text = (value = "text"): TextItem => ({ kind: "text", id: id(), tex
 export const newSlot = (items: PlaceItem[] = [], label = ""): Slot => ({ items, label });
 
 export const newStep = (to: Slot = newSlot()): Step =>
-  ({ id: id(), to, via: null, moveTo: null, moveVia: null, from: null, extras: [] });
+  ({ id: id(), to, moveTo: null, from: null, extras: [] });
 
 export const movesAnyone = (step: Step): boolean =>
   MOVE_PARTS.some((part) => !slotIsEmpty(step[part]));
@@ -156,9 +151,7 @@ const cloneStep = (step: Step): Step => ({
   ...step,
   id: id(),
   to: cloneSlot(step.to)!,
-  via: cloneSlot(step.via),
   moveTo: cloneSlot(step.moveTo),
-  moveVia: cloneSlot(step.moveVia),
   from: cloneSlot(step.from),
   extras: step.extras.map(cloneItem),
 });
@@ -312,13 +305,29 @@ function bucketFor(part: Part): Bucket {
  *
  * Extras take anything — what the row *mentions*, "2 deer" included. A
  * number there counts what it stands beside, never villagers, so it carries
- * no figure.
+ * no figure. A source takes icons only: how many left it is the number on
+ * where they went.
  */
 export function accepts(part: Part, item: Item): boolean {
-  return part === "extras" || isPlaceItem(item);
+  if (part === "extras") return true;
+  return part === "from" ? isIcon(item) : isPlaceItem(item);
 }
 
-const PARTS: Part[] = ["to", "via", "moveTo", "moveVia", "from", "extras"];
+/** A place with a number is that many on a work, then what they do on the
+ *  way: its first icon is the work, and every one after it is drawn small. */
+export function minorIcons(slot: Slot): Set<string> {
+  const out = new Set<string>();
+  if (!slot.items.some(isCount)) return out;
+  let main = false;
+  for (const item of slot.items)
+    if (isIcon(item)) {
+      if (main) out.add(item.id);
+      main = true;
+    }
+  return out;
+}
+
+const PARTS: Part[] = ["to", "moveTo", "from", "extras"];
 
 const spliced = (items: Item[], index: number, item: Item): Item[] => {
   const out = items.slice();
@@ -445,7 +454,7 @@ export function numbering(card: Card): Record<string, number> {
   return out;
 }
 
-/** "All" in a source: everyone on that work leaves, however many it was. */
+/** "All" where moved villagers go: everyone on the source's work, however many it was. */
 export const ALL = "All";
 
 /**
@@ -455,12 +464,11 @@ export const ALL = "All";
  * berries and "6" under sheep are both food, and the card is about who is on
  * which.
  *
- * A number in *source* is villagers **leaving**, so it comes off that work —
- * **All** empties it — and the same villagers arrive wherever they were moved
- * to, which therefore needs no number of its own. A number there anyway is
- * read as the arrivals, as a card written before the two halves did. Numbers
- * anywhere else are new villagers arriving. The moved half is counted first,
- * so a number on the left shows its work once the whole row is done.
+ * A number where moved villagers go is how many moved: they arrive there and
+ * come off the source, which therefore carries no number — **All** moves the
+ * source's whole figure. A number where new villagers go is new villagers
+ * arriving. The moved column is counted first, so a number on the left shows
+ * its work once the whole row is done.
  *
  * Counted up by default, and *set* wherever a number states its total
  * outright. A number whose place names no work — a tower, a militia, a tech —
@@ -474,31 +482,28 @@ function tally(card: Card, after?: (step: Step, villagers: number) => void): Rec
   const out: Record<string, string> = {};
   const running: Partial<Record<Job, number>> = {};
 
-  /** Notes one number and says how many villagers it moved. */
-  const note = (item: CountItem, job: Job | null, leaving: boolean): number => {
-    if (!job) return 0;
-    const before = running[job] ?? 0;
+  const arrive = (item: CountItem, job: Job | null, villagers: number) => {
+    if (!job) return;
     const stated = Number.parseInt(item.total, 10);
-    const value = Number.parseInt(item.value, 10);
-    const all = leaving && item.value.trim().toLowerCase() === ALL.toLowerCase();
-    const moved = all ? before : Number.isFinite(value) ? value : 0;
-    running[job] = Number.isFinite(stated) ? stated : before + (leaving ? -moved : moved);
+    running[job] = Number.isFinite(stated) ? stated : (running[job] ?? 0) + villagers;
     out[item.id] = String(running[job]);
-    return moved;
+  };
+  const value = (item: CountItem) => {
+    const parsed = Number.parseInt(item.value, 10);
+    return Number.isFinite(parsed) ? parsed : 0;
   };
   const counts = (slot: Slot | null) => (slot ? slot.items.filter(isCount) : []);
 
   for (const section of card.sections)
     for (const step of section.steps) {
       const source = jobOf(step.from?.items ?? []);
-      const moved = counts(step.from).reduce((sum, item) => sum + note(item, source, true), 0);
-      for (const item of counts(step.moveVia)) note(item, jobOf(step.moveVia!.items), false);
-      const landing = jobOf(step.moveTo?.items ?? []);
-      if (counts(step.moveTo).length)
-        for (const item of counts(step.moveTo)) note(item, landing, false);
-      else if (landing && moved) running[landing] = (running[landing] ?? 0) + moved;
-      for (const part of ["via", "to"] as const)
-        for (const item of counts(step[part])) note(item, jobOf(step[part]!.items), false);
+      for (const item of counts(step.moveTo)) {
+        const all = item.value.trim().toLowerCase() === ALL.toLowerCase();
+        const moved = all ? (source ? running[source] ?? 0 : 0) : value(item);
+        if (source) running[source] = (running[source] ?? 0) - moved;
+        arrive(item, jobOf(step.moveTo!.items), moved);
+      }
+      for (const item of counts(step.to)) arrive(item, jobOf(step.to.items), value(item));
       after?.(step, Object.values(running).reduce((sum, n) => sum + (n ?? 0), 0));
     }
   return out;

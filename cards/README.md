@@ -66,7 +66,8 @@ python -m uvicorn replays.server:app --port 8030
 Microsoft keeps replays for a few months, so an older game has none. The
 card covers the opening up to a minute into Castle Age, its rows numbered by
 the villagers at work rather than by row, and the two "Going" phases
-unnumbered — no villager is made while the age is researching. Buildings,
+unnumbered — no villager is made while the age is researching, so one first
+sent to work then is written just before the age-up. Buildings,
 techs, age times, gather points and which villagers were sent where come
 straight from the replay. **How many villagers** a row moves is partly inferred: the
 replay records every queue click, including the ones there was no food for,
@@ -86,31 +87,33 @@ says they are the in-between rather than an age. Add, rename, recolour or
 delete them freely.
 
 A row is three columns: the **new** villagers, the ones **moved** off other
-work, and what the row only mentions. The first two read right to left.
+work, and what the row only mentions. A place is a number, its work, and then
+what is done on the way, drawn small; a move reads right to left.
 
 ```
-  (3)  [1] [boar] ← [house]     [boar] ← [mill] ← [3] [sheep]      [2] [deer]
-       └ end      └ before      └ moved to       └ source           └ extras
-                                         └ before
+  (3)  [1][boar] house       [3][boar] mill ← [sheep]      [2][deer]
+       └ new villagers       └ moved to     └ source       └ extras
 ```
 
 | Place | What it says |
 |---|---|
-| **End** | where new villagers end up, and how many |
-| **Before** | optional — what they do on the way |
-| **Moved to** | where villagers taken off other work go. No number: the source has it |
-| **Before** (moved) | optional — what they do on the way |
-| **Source** | the work they were taken off, and how many — or **All** |
+| **Goes to** | how many new villagers, the work they go to, then what they build on the way |
+| **Moved to** | how many were taken off other work — or **All** — where they go, then what they build on the way |
+| **Source** | the work they were taken off. No number: *moved to* has it |
 | **Extras** | anything the row only mentions: the deer pushed in, a tech, a note |
 
-The moves line up down the card, and the extras keep to its right edge.
+The moves line up down the card, and the extras keep to its right edge. A row
+too long for one line breaks before its move, and then before its extras —
+never in the middle of a column.
 
-Each place holds **icons**, **numbers** and optional **words**. The arrows
-between the places are drawn, never placed — they are there because the next
-place exists, which is all they mean.
+Each place holds **icons**, **numbers** and optional **words**. In a place
+with a number, the first icon is the work and every icon after it is drawn
+small: it is what they do on the way, not what the row is about. A number
+and the icon after it are drawn as one tile. The arrow before the source is
+drawn, never placed — it is there because the source exists.
 
 A number is simply the first thing in the place it is about — there is no
-column of its own. Words on *end* are how a row becomes an instruction: an
+column of its own. Words on *goes to* are how a row becomes an instruction: an
 icon and "Research Loom".
 
 Extras are **pictures, words and numbers** — "2 deer", a tech, a note. A
@@ -133,15 +136,17 @@ the wood line and the straggler tree is stragglers. A place that names no work
 — a tower, a militia, a tech, or a mill or mining camp, which serve two kinds —
 leaves its number without a total rather than with a meaningless one.
 
-A number in **source** is villagers *leaving*, so it comes off that work;
-in *before* and *end* they are arriving, so it goes on. The places are counted
-in the order the villagers move — source, before, end — not the order they are
-drawn.
+A number in **moved to** is villagers *moved*: they go on to that work and
+come off the source's. **All** moves everyone the source had. A number in
+*goes to* is new villagers arriving. The moves are counted before the new
+villagers, whatever order they are drawn in.
 
 That figure is **counted up** by default. Type one into *Total on this
-work* and it says so outright, and everything below counts on from there —
-which is how **All** off the sheep, which is no number, still leaves the
-sheep at 0. Turn the totals off for the whole card in the Card panel.
+work* and it says so outright, and everything below counts on from there.
+Turn the totals off for the whole card in the Card panel.
+
+Cards saved before the number moved to *moved to* open with it there, and
+their *before* places folded into the place after the work.
 
 ### Captions
 
@@ -154,7 +159,7 @@ the card stays on the same line. Set it in the icon's panel on the right.
 - The shelf on the left holds **numbers and icons**. Drag either onto any
   place on the card, or click it and it lands wherever the selection is aiming
   — the banner at the top of the shelf says where. **All** beside the numbers
-  is for a source: everyone on that work leaves, and its figure goes to 0.
+  is for where moved villagers go: everyone on the source's work moves.
 - **Row numbers** count the rows, or, picked in the Card panel, the
   villagers at work once the row is done — every work's figure added up.
 - **Add a row** with the `+ row` strip at the foot of each phase, or press

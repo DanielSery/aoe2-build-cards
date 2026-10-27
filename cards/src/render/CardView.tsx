@@ -9,7 +9,7 @@
 import { useLayoutEffect, useRef } from "react";
 import type { JSX } from "react";
 import type { Card, Item, Part, Section, Slot, Step, Where } from "../model/card";
-import { movesAnyone, newSlot, numbering, slotIsEmpty, totals } from "../model/card";
+import { minorIcons, movesAnyone, newSlot, numbering, slotIsEmpty, totals } from "../model/card";
 import { iconLabel, iconUrl } from "../icons";
 
 export type Edit = {
@@ -101,10 +101,11 @@ function itemHandlers(edit: Edit | undefined, where: Where) {
   };
 }
 
-function ItemView({ item, where, edit, total }: {
-  item: Item; where: Where; edit?: Edit; total?: string;
+function ItemView({ item, where, edit, total, minor }: {
+  item: Item; where: Where; edit?: Edit; total?: string; minor?: boolean;
 }) {
   const classes = ["item", `item--${item.kind}`];
+  if (minor) classes.push("item--minor");
   if (same(edit?.selected ?? null, where)) classes.push("is-selected");
   const common = { className: classes.join(" "), ...itemHandlers(edit, where) };
 
@@ -146,12 +147,13 @@ function SlotView({ slot, part, hint, step, section, edit, sums }: {
   const where: Where = { section: section.id, step: step.id, part };
   const classes = ["slot", `slot--${part}`];
   if (same(edit?.selected ?? null, where)) classes.push("is-selected");
+  const minor = minorIcons(slot);
   return (
     <span className={classes.join(" ")} data-hint={hint}
           onClick={edit && ((event) => { event.stopPropagation(); edit.select(where); })}
           {...dropHandlers(edit, where, [DRAG_ITEM, ...FROM_SHELF])}>
       {slot.items.map((item) => (
-        <ItemView key={item.id} item={item} edit={edit} total={sums[item.id]}
+        <ItemView key={item.id} item={item} edit={edit} total={sums[item.id]} minor={minor.has(item.id)}
                   where={{ ...where, item: item.id }} />
       ))}
       {slot.label && <span className="phrase">{slot.label}</span>}
@@ -215,34 +217,35 @@ function StepRow({ step, section, number, edit, sums }: {
               }}>⠿</span>
       )}
       {section.numbered && <span className="step-no">{number}</span>}
-      <span className="column column--new">
-        <Chain step={step} section={section} edit={edit} sums={sums}
-               places={[["to", step.to, "end"], ["via", step.via, "before"]]} />
+      <span className="step-body">
+        <span className="column column--new">
+          <Chain step={step} section={section} edit={edit} sums={sums} places={[["to", step.to, "end"]]} />
+        </span>
+        <span className="column column--move">
+          <Chain step={step} section={section} edit={edit} sums={sums}
+                 places={[["moveTo", step.moveTo, "moved to"], ["from", step.from, "source"]]} />
+        </span>
+        {(mentions || offered(edit, step, section, "extras")) &&
+          <span className={`extras${same(edit?.selected ?? null, extrasAt) ? " is-selected" : ""}`}
+              data-hint="extras"
+              onClick={edit && ((event) => { event.stopPropagation(); edit.select(extrasAt); })}
+              {...dropHandlers(edit, extrasAt, [DRAG_ITEM, DRAG_ICON, DRAG_NUMBER])}>
+          {step.extras.map((item) => (
+            <ItemView key={item.id} item={item} edit={edit} total={sums[item.id]}
+                      where={{ ...extrasAt, item: item.id }} />
+          ))}
+        </span>}
       </span>
-      <span className="column column--move">
-        <Chain step={step} section={section} edit={edit} sums={sums}
-               places={[["moveTo", step.moveTo, "moved to"], ["moveVia", step.moveVia, "before"],
-                        ["from", step.from, "source"]]} />
-      </span>
-      {(mentions || offered(edit, step, section, "extras")) &&
-        <span className={`extras${same(edit?.selected ?? null, extrasAt) ? " is-selected" : ""}`}
-            data-hint="extras"
-            onClick={edit && ((event) => { event.stopPropagation(); edit.select(extrasAt); })}
-            {...dropHandlers(edit, extrasAt, [DRAG_ITEM, DRAG_ICON, DRAG_NUMBER])}>
-        {step.extras.map((item) => (
-          <ItemView key={item.id} item={item} edit={edit} total={sums[item.id]}
-                    where={{ ...extrasAt, item: item.id }} />
-        ))}
-      </span>}
     </div>
   );
 }
 
 /**
  * The moves line up down the card: every row with one has its new villagers'
- * column as wide as the widest such column on the card. A row with no move is
- * left out of the measure — an age-up row's long label would otherwise push
- * every move on the card to the right.
+ * column as wide as the widest such column on the card. Left out of the
+ * measure are a row with no move — an age-up row's long label would push every
+ * move on the card to the right — and a row whose move does not fit beside its
+ * own new villagers even unaligned, since that move goes to a line of its own.
  *
  * Measured rather than laid out as a grid, because the rows sit in separate
  * phase boxes; set as a variable on the card itself, so the off-screen copy
@@ -253,8 +256,12 @@ function useColumns(card: Card) {
   useLayoutEffect(() => {
     const root = node.current;
     if (!root) return;
-    const widths = [...root.querySelectorAll<HTMLElement>(".step--moves > .column--new > .chain")]
-      .map((chain) => chain.offsetWidth);
+    const widths = [...root.querySelectorAll<HTMLElement>(".step--moves > .step-body")].flatMap((body) => {
+      const fresh = body.querySelector<HTMLElement>(".column--new > .chain")!.offsetWidth;
+      const move = body.querySelector<HTMLElement>(".column--move")!;
+      const room = body.clientWidth - Number.parseFloat(getComputedStyle(move).marginLeft);
+      return fresh + move.offsetWidth <= room ? [fresh] : [];
+    });
     root.style.setProperty("--new-column", widths.length ? `${Math.max(...widths)}px` : "auto");
   }, [card]);
   return node;

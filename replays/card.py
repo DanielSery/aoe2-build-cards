@@ -123,12 +123,11 @@ def _place(items: list[dict], label: str = "") -> dict:
     return {"items": items, "label": label}
 
 
-def _step(to: list[dict], via: list[dict] | None = None, label: str = "", extras: list[dict] | None = None) -> dict:
-    """A row with only its new villagers' half. `moveTo` is always written, even
-    empty: a row without it is the app's older one-sentence shape, which
+def _step(to: list[dict], label: str = "", extras: list[dict] | None = None) -> dict:
+    """A row with only its new villagers' column. `moveTo` is always written,
+    even empty: a row without it is the app's older one-sentence shape, which
     `migrate.ts` turns into a move wherever there is a source."""
-    return {"id": _id(), "to": _place(to, label), "via": _place(via) if via else None,
-            "moveTo": None, "moveVia": None, "from": None, "extras": extras or []}
+    return {"id": _id(), "to": _place(to, label), "moveTo": None, "from": None, "extras": extras or []}
 
 
 def _unit(row: dict, step: dict) -> dict:
@@ -154,7 +153,7 @@ def _paired(line: list[dict]) -> list[dict]:
                 and pair[0]["new"] not in pair[1]["move"]):
             new, move = pair
             out[-1] = {"t": last["t"], "new": None, "move": None,
-                       "step": move["step"] | {"to": new["step"]["to"], "via": new["step"]["via"],
+                       "step": move["step"] | {"to": new["step"]["to"],
                                                "extras": new["step"]["extras"] + move["step"]["extras"]}}
         else:
             out.append(unit)
@@ -309,6 +308,16 @@ class Opening:
     def population_at(self, t: float) -> int:
         return len(self.log.start_villagers) + sum(1 for s, _ in self.spawns if s <= t)
 
+    def _before_going(self, t: float) -> float:
+        """No villager is added while an age is being researched, so one first
+        put to work in a Going band is written in the band before it. Most were
+        still in the Town Centre's queue at the click, which puts the age-up
+        behind them; the rest were idle, or came from a second Town Centre."""
+        for age in ("feudal", "castle"):
+            if age in self.ages and self.ages[age][0] <= t < self.ages[age][1]:
+                return self.ages[age][0] - 0.001
+        return t
+
     def transitions(self) -> list[tuple]:
         """(t, villager, from, to, sites, deer), after misclicks and errands are gone.
 
@@ -409,18 +418,21 @@ class Opening:
             return any(lo < row["t"] < hi and job in (row["from"], row["to"]) for row in rows)
 
         for t, v, _, dst, sites, deer in joins:
+            gone = left.get((v, t), math.inf)
+            t = self._before_going(t)
             # Folded into another row only while still there when it starts,
             # and never across a row that moves anyone on or off the same
             # work, or the figures between the two would count it wrong.
-            gone = left.get((v, t), math.inf)
             host = min((row for row in rows if row["from"] and row["to"] == dst
                         and row["t"] - MERGE <= t <= row["until"] + MERGE and row["t"] < gone
                         and not crossed(row["t"], t, dst)
                         and self.section_of(row["t"]) == self.section_of(t)),
                        key=lambda row: abs(t - row["t"]), default=None)
-            last = max((row for row in rows if row["t"] <= t), key=lambda row: row["t"], default=None)
-            if (not host and last and last["to"] == dst
-                    and self.section_of(last["t"]) == self.section_of(t)):
+            # Ties are the villagers moved back out of a Going band, latest last.
+            last = max(reversed([row for row in rows
+                                 if row["t"] <= t and self.section_of(row["t"]) == self.section_of(t)]),
+                       key=lambda row: row["t"], default=None)
+            if not host and last and last["to"] == dst:
                 host = last
             if host:
                 host["new"].add(v)
@@ -429,6 +441,26 @@ class Opening:
             else:
                 rows.append(_row(t, None, dst, set(sites), new={v}, deer=set(deer)))
         rows.sort(key=lambda r: r["t"])
+
+        # The new villagers' column names a place once in a run: "1 wood ←
+        # lumber camp" and then "3 wood" are "4 wood ← lumber camp", unless
+        # somebody left that work in between.
+        run: dict[str, dict | None] = {}
+        for row in rows:
+            band = self.section_of(row["t"])
+            if run.get(band) and row["from"] == run[band]["to"]:
+                run[band] = None
+            if not row["new"]:
+                continue
+            if run.get(band) and run[band]["to"] == row["to"]:
+                run[band]["new"] |= row["new"]
+                run[band]["via_new"] |= row["via_new"]
+                if not row["from"]:
+                    run[band]["deer"] |= row["deer"]
+                row["new"], row["via_new"] = set(), set()
+            else:
+                run[band] = row
+        rows = [row for row in rows if row["new"] or row["from"]]
 
         # A deer is drawn once, on the first row that went for it, so a card's
         # deer add up to the herd rather than to the crews that shared one.
@@ -509,16 +541,16 @@ class Opening:
         sections = {label: {"id": _id(), "label": label, "tone": tone, "numbered": tone != "transition",
                             "steps": []}
                     for label, tone in PHASES}
-        on_card: Counter = Counter()  # the app's figures, as it will count this card
         lines: dict[str, list[dict]] = defaultdict(list)
         for row in self.rows():
             def drawn(sites: set) -> list[dict]:
                 return [icon(building_icon(name)) if building_icon(name) else text(name)
                         for name, _ in sorted(sites, key=lambda site: site[1])]
 
+            # What goes up on the way follows the work it was built for, drawn
+            # small. The other buildings of the moment go beside the new
+            # villagers, or beside the moved ones on a row that has none.
             moved_via, new_via = drawn(row["via_moved"]), drawn(row["via_new"])
-            # The other buildings of the moment go up beside the new villagers,
-            # or beside the moved ones on a row that has none.
             (new_via if row["new"] or not row["from"] else moved_via).extend(_in_order(row["built"]))
             extras = _in_order(row["extras"])
             # A place takes icons and numbers only, so a building nothing can
@@ -534,21 +566,11 @@ class Opening:
             if row["to"] == "hunt" and row["deer"]:
                 herd = len(row["deer"])
                 extras = ([count(herd)] if herd > 1 else []) + [icon("gaia-deer")] + extras
-            target = icon(JOB_ICON[row["to"]])
-            on_card[row["to"]] += len(row["new"])
-            step = _step([count(len(row["new"])), target] if row["new"] else [], new_via,
+            step = _step([count(len(row["new"])), icon(JOB_ICON[row["to"]])] + new_via if row["new"] else [],
                          extras=unnamed + extras)
             if row["from"]:
-                # Where they went needs no number: it is everyone off the
-                # source. "All" only where it is exactly what the card has
-                # there, since the app moves the whole figure for it.
-                leaving = len(row["who"])
-                gone = count("All") if leaving == on_card[row["from"]] else count(leaving)
-                on_card[row["from"]] -= leaving
-                on_card[row["to"]] += leaving
-                step |= {"moveTo": _place([icon(JOB_ICON[row["to"]])]),
-                         "moveVia": _place(moved_via) if moved_via else None,
-                         "from": _place([gone, icon(JOB_ICON[row["from"]])])}
+                step |= {"moveTo": _place([count(len(row["who"])), icon(JOB_ICON[row["to"]])] + moved_via),
+                         "from": _place([icon(JOB_ICON[row["from"]])])}
             line.append(_unit(row, step))
 
         for label, line in lines.items():
@@ -557,7 +579,10 @@ class Opening:
         for age, going in (("feudal", "Going Feudal"), ("castle", "Going Castle")):
             if age in self.ages:
                 click, landing = self.ages[age]
-                label = f"click {clock(click)} at {self.population_at(click)} vils, up {clock(landing)}"
+                # Counted when the research starts: the villagers queued
+                # before the click come out first.
+                started = max(click, landing - AGE_SECONDS[age])
+                label = f"click {clock(click)} at {self.population_at(started)} vils, up {clock(landing)}"
                 sections[going]["steps"].insert(0, _step([icon(AGE_ICON[age])], label=label))
 
         made: dict[str, list] = defaultdict(list)

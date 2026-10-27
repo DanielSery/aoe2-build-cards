@@ -158,10 +158,10 @@ function RowPanel({ card, at, apply, select, addRow }: Pick<Props, "card" | "app
                        onChange={(e) => apply((c) => mapSlot(c, where, (s) => ({ ...s, label: e.target.value })))} />
                 <div className="row tight" style={{ marginTop: 6 }}>
                   {slot.items.map((entry) => chip(entry, { ...where, item: entry.id }))}
-                  <button className="tiny" onClick={(e) => {
+                  {part !== "from" && <button className="tiny" onClick={(e) => {
                     e.stopPropagation();
                     apply((c) => addItem(c, where, count("1")));
-                  }}>+ number</button>
+                  }}>+ number</button>}
                 </div>
                 <p className="hint" style={{ marginTop: 6 }}>
                   Drag an icon here from the shelf, or select this place and click one.
@@ -243,11 +243,11 @@ function ItemPanel({ selected, item, apply, select }: Pick<Props, "card" | "appl
           <p className="hint" style={{ marginTop: 6 }}>
             The smaller figure under the number is the villagers on whatever
             this place names — sheep, hunt, berries, farms, the wood line,
-            stragglers, gold, stone. In <em>source</em> the number is
-            villagers leaving, so it comes off; anywhere else they are
-            arriving. Left blank the figure is counted up from the numbers
-            above; typed in, it says so outright and everything below counts on
-            from there.
+            stragglers, gold, stone. Where moved villagers go, the number is
+            how many moved: they come off the source too, and <em>All</em> is
+            everyone who was on it. Left blank the figure is counted up from
+            the numbers above; typed in, it says so outright and everything
+            below counts on from there.
           </p>
         </>
       )}

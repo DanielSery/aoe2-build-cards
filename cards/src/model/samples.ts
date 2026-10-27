@@ -2,9 +2,9 @@
  * The card the editor opens with, so the format explains itself.
  *
  * A transcription of a well-known men-at-arms opening rather than advice: it
- * is here because it uses both halves of a row — new villagers, and villagers
- * moved off other work — a caption, a labelled row, numbers that
- * are counted up, and All.
+ * is here because it uses all three columns of a row — new villagers,
+ * villagers moved off other work, extras — something done on the way, a
+ * caption, a labelled row, numbers that are counted up, and All.
  */
 
 import type { Card, Step } from "./card";
@@ -36,8 +36,8 @@ export function sampleCard(): Card {
           }),
           // Twelve on the hunt: all six off the sheep, and six new.
           row(newStep(newSlot([count("6"), icon("gaia-boar")])), {
-            moveTo: newSlot([icon("gaia-boar")]),
-            from: newSlot([count(ALL), icon("gaia-sheep")]),
+            moveTo: newSlot([count(ALL), icon("gaia-boar")]),
+            from: newSlot([icon("gaia-sheep")]),
           }),
           row(newStep(newSlot([icon("building-barracks")])), {
             moveTo: newSlot([icon("resource-wood")]),
@@ -52,14 +52,13 @@ export function sampleCard(): Card {
         numbered: true,
         steps: [
           row(newStep(), {
-            moveTo: newSlot([icon("resource-stone")]),
-            moveVia: newSlot([{ ...icon("resource-gold"), caption: "50" }]),
-            from: newSlot([count("3"), icon("gaia-boar")]),
+            moveTo: newSlot([count("3"), icon("resource-stone"), { ...icon("resource-gold"), caption: "50" }]),
+            from: newSlot([icon("gaia-boar")]),
           }),
           // A tower names no work: the five come off the hunt and into no figure.
           row(newStep(), {
-            moveTo: newSlot([icon("building-watch_tower")]),
-            from: newSlot([count("5"), icon("gaia-boar")]),
+            moveTo: newSlot([count("5"), icon("building-watch_tower")]),
+            from: newSlot([icon("gaia-boar")]),
           }),
           newStep(newSlot([count("3"), icon("unit-militia")])),
         ],

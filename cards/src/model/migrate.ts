@@ -6,7 +6,7 @@
  * an error: the card is drawn, not validated, so a missing `to` is a crash in
  * the middle of a render and the whole app goes with it.
  *
- * Five shapes so far, and all of them still open:
+ * Six shapes so far, and all of them still open:
  *   1. a row was a flat line of items, with the arrows placed by hand;
  *   2. three places, each with a `count` string and an `icons` list;
  *   3. three places of items, with numbers as entities like anything else;
@@ -15,15 +15,19 @@
  *      place it is about.
  *   5. two halves: new villagers on the left, the ones moved off other work
  *      on the right. A row of shapes 1-4 with a source was a move, so it
- *      becomes the right half whole, numbers and all -- a number on where the
- *      moved villagers go is read as the arrivals, which is what it meant.
+ *      becomes the right half whole.
+ *   6. no "before" places: what is done on the way follows the work in the
+ *      same place, drawn small, and a move's number is on where they went
+ *      rather than on the source. A row of shapes 1-5 numbering both the
+ *      source and where they went said "3 off the sheep, 4 to the hunt": that
+ *      is 3 moved and 1 new to the hunt, so the 1 goes to the new villagers.
  * Retired icon keys are carried across too -- see `RENAMED`.
  * The hand-placed arrows are what says where the places divide, so carrying
  * (1) forward is exact rather than a guess.
  */
 
 import type { Card, CountItem, Item, PlaceItem, Section, Slot, Step, Tone } from "./card";
-import { TONES, count, newSlot, newStep } from "./card";
+import { TONES, count, newSlot } from "./card";
 
 const TONE_KEYS = new Set(TONES.map(([tone]) => tone));
 
@@ -91,8 +95,11 @@ function slot(raw: unknown): Slot {
   };
 }
 
+/** A row of shapes 1-5, which still had a "before" place in each column. */
+type Wide = Step & { via: Slot | null; moveVia: Slot | null };
+
 /** Shape 1: a line of items whose arrows divide it into the places. */
-function fromFlatList(value: Loose): Step {
+function fromFlatList(value: Loose): Wide {
   const raw = (Array.isArray(value.items) ? value.items : []) as Loose[];
   const places: Slot[] = [newSlot()];
   const spilt: Item[] = [];
@@ -110,22 +117,22 @@ function fromFlatList(value: Loose): Step {
     else here.label = here.label ? `${here.label} ${made.text}` : made.text;
   }
 
-  const step = newStep(places[0]);
-  step.id = id(value.id);
   // The row's own count box was drawn in front of the first place, in a
   // column of its own. There is no column now, so it goes into that place.
   const lead = leadCount(value);
-  if (lead) step.to = { ...step.to, items: [lead, ...step.to.items] };
-  step.via = places[1] ?? null;
-  step.from = places[2] ?? null;
-  moved(step);
-  // A row with more than three places, and anything a place cannot hold, goes
-  // where the card already puts what it only mentions.
-  // Extras hold pictures and words: a number that had drifted out there has
-  // no resource to be about, so it does not come along.
-  step.extras = [...places.slice(3).flatMap((place) => place.items), ...spilt, ...items(value.right)]
-    .filter((entry) => entry.kind !== "count");
-  return step;
+  return {
+    id: id(value.id),
+    to: lead ? { ...places[0], items: [lead, ...places[0].items] } : places[0],
+    via: places[1] ?? null,
+    moveTo: null,
+    moveVia: null,
+    from: places[2] ?? null,
+    // A row with more than three places, and anything a place cannot hold,
+    // goes where the card already puts what it only mentions. A number that
+    // had drifted out there had no resource to be about, so it stays behind.
+    extras: [...places.slice(3).flatMap((place) => place.items), ...spilt, ...items(value.right)]
+      .filter((entry) => entry.kind !== "count"),
+  };
 }
 
 function leadCount(value: Loose): CountItem | null {
@@ -140,10 +147,10 @@ function leadCount(value: Loose): CountItem | null {
 function step(raw: unknown): Step {
   const value = (raw ?? {}) as Loose;
   if (value.to === undefined && (value.items !== undefined || value.right !== undefined))
-    return fromFlatList(value);
+    return narrowed(moved(fromFlatList(value)));
   const lead = leadCount(value);
   const to = slot(value.to);
-  const made: Step = {
+  const made: Wide = {
     id: id(value.id),
     to: lead ? { ...to, items: [lead, ...to.items] } : to,
     via: value.via ? slot(value.via) : null,
@@ -152,17 +159,43 @@ function step(raw: unknown): Step {
     from: value.from ? slot(value.from) : null,
     extras: items(value.extras),
   };
-  if (!("moveTo" in value)) moved(made);
-  return made;
+  return narrowed("moveTo" in value ? made : moved(made));
 }
 
 /** Shapes 1-4: a row with a source moved villagers, so all of it is the moved half. */
-function moved(step: Step): void {
-  if (!step.from) return;
-  step.moveTo = step.to;
-  step.moveVia = step.via;
-  step.to = newSlot();
-  step.via = null;
+function moved(row: Wide): Wide {
+  if (!row.from) return row;
+  return { ...row, moveTo: row.to, moveVia: row.via, to: newSlot(), via: null };
+}
+
+const joined = (place: Slot | null, after: Slot | null): Slot | null =>
+  place && after
+    ? { items: [...place.items, ...after.items], label: [place.label, after.label].filter(Boolean).join(" ") }
+    : place ?? after;
+
+const isCount = (entry: PlaceItem): entry is CountItem => entry.kind === "count";
+
+/** Shapes 1-5: each "before" place follows its work, and the source's number
+ *  goes to where the villagers went. */
+function narrowed(row: Wide): Step {
+  let to = joined(row.to, row.via)!;
+  const leaving = row.from?.items.filter(isCount) ?? [];
+  let moveTo = joined(row.moveTo, row.moveVia) ?? (leaving.length ? newSlot() : null);
+  const from = row.from && { ...row.from, items: row.from.items.filter((entry) => !isCount(entry)) };
+  if (leaving.length && moveTo) {
+    const arriving = moveTo.items.filter(isCount);
+    const [off, on] = [Number(leaving[0].value), Number(arriving[0]?.value)];
+    const work = moveTo.items.find((entry) => entry.kind === "icon");
+    if (!arriving.length) {
+      moveTo = { ...moveTo, items: [...leaving, ...moveTo.items] };
+    } else if (leaving.length === 1 && arriving.length === 1 && Number.isInteger(off) && Number.isInteger(on)
+               && off < on && work && !to.items.length) {
+      moveTo = { ...moveTo, items: moveTo.items.map((entry) =>
+        entry === arriving[0] ? { ...entry, value: String(off) } : entry) };
+      to = { ...to, items: [count(String(on - off)), { ...work, id: crypto.randomUUID() }] };
+    }
+  }
+  return { id: row.id, to, moveTo, from, extras: row.extras };
 }
 
 function section(raw: unknown): Section {

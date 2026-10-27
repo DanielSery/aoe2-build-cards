@@ -29,25 +29,32 @@ works.
 | `src/editor/` | the shelf, the row form, the library panel, *Analyze game…* and its finder, and where an added icon lands |
 | `src/App.tsx` | state, undo, the three panes, the off-screen export copy |
 
-**A row is three columns, not a canvas.** First the **new** villagers:
-`via` (*before*) → `to` (*end*). Then the ones **moved** off other work:
-`from` (*source*) → `moveVia` → `moveTo`, each read right to left. Last the
-`extras`, what the row only mentions. The arrows are *drawn because the next
-place exists*, never placed by hand; a place takes icons and numbers and
-nothing else; and `extras` take anything — a number there ("2 deer") counts
-what it stands beside, never villagers, so it carries no figure. The first
-version let you drop anything anywhere in a flat list, and it was unusable;
-the next had one sentence a row, and "4 hunt ← 3 sheep" — three off the
-sheep and one new besides — was a puzzle a card should not set. Now that is
-"1 hunt" and "hunt ← 3 sheep". (A brief version allowed a move *or* extras on
-a row, for room; three columns replaced it.)
+**A row is three columns, not a canvas.** First where the **new** villagers
+go (`to`). Then the ones **moved** off other work: `moveTo` ← `from`, the
+number on where they went. Last the `extras`, what the row only mentions. A
+place is a number, its work, and then what is done on the way — "4 boar house
+house" — and everything after the first icon of a counted place is drawn
+small (`minorIcons`), so the work reads first. A number and the icon after it
+touch, one border between them, so "4 boar" is one thing. The arrow is *drawn
+because the source exists*, never placed by hand; a place takes icons and
+numbers and nothing else, a source icons only; and `extras` take anything — a
+number there ("2 deer") counts what it stands beside, never villagers, so it
+carries no figure. The first version let you drop anything anywhere in a flat
+list, and it was unusable; the next had one sentence a row, and "4 hunt ← 3
+sheep" — three off the sheep and one new besides — was a puzzle a card should
+not set. Now that is "1 hunt" and "3 hunt ← sheep". Each column had a
+*before* place of its own for a while, with its own arrow; a row with a
+building in each was five places and four arrows wide and ran off the card.
 
 **The moves are a column; the extras keep to the right edge.** Every row with
 a move has its new villagers' column as wide as the widest such column on the
 card (`CardView.useColumns`, a CSS variable on the card itself, so the
 off-screen copy measures its own). A row with no move is left out of the
-measure, or one age-up label would push every move on the card to the right.
-The extras are not lined up on their left as well: that adds up the widest of
+measure, or one age-up label would push every move on the card to the right;
+so is a row whose move does not fit beside its own new villagers at all. A row
+that does not fit breaks between its columns — the move, then the extras, go
+to a line of their own (`.step-body` wraps) — and never inside a column. The
+extras are not lined up on their left as well: that adds up the widest of
 every column, and one long move plus one long left half ran a card off its own
 edge. Measured rather than a CSS grid, because the rows sit in separate phase
 boxes.
@@ -123,21 +130,23 @@ Four more rules are easy to break:
   at all rather than a meaningless one. `CountItem.total` states the figure
   outright and *sets* the running one from there on, because an absolute is a
   claim no arithmetic over the card can make. **All** is the one word
-  `totals()` reads: in a source it empties that work, however many were on it.
+  `totals()` reads: where moved villagers go, it is everyone on the source.
 - **Row numbers count rows or villagers** (`Card.rowNumbers`). Counting
   villagers, a row wears the sum of every work's figure once it is done
   (`numbering`), so a row that only moves villagers repeats the number above
   it — and a villager the card never put to work is not in it, which is why an
-  imported card's last Dark Age row can read one under the age-up's "at N
-  vils", which counts every villager trained. An unnumbered phase stays
-  unnumbered either way.
-- **A number in `from` is villagers leaving, and they arrive at `moveTo`** —
-  which is why `moveTo` needs no number of its own; **All** moves the source's
-  whole figure. A number on `moveTo` anyway is read as the arrivals, which is
-  what an older card's one-sentence rows meant by it. The moved half is
-  counted before the new one, so a number on the left shows its work once the
-  whole row is done: "1 hunt" beside "hunt ← 3 sheep" reads 4 under the 1 if
-  the hunt was empty.
+  imported card's last Dark Age row can read under the age-up's "at N vils",
+  which counts every villager trained by the time the research started. An
+  unnumbered phase stays unnumbered either way.
+- **A number on `moveTo` is how many moved, and they come off `from`** —
+  which is why a source takes no number; **All** moves the source's whole
+  figure. The figure under it is where they went, not what is left behind:
+  the number was on the source for a while, and a card read better saying
+  where people are than where they are not. A card numbering both, from
+  before, said "3 off the sheep, 4 to the hunt", and `migrate` reads that as
+  3 moved and 1 new. The moved column is counted before the new one, so a
+  number on the left shows its work once the whole row is done: "1 hunt"
+  beside "3 hunt ← sheep" reads 4 under the 1 if the hunt was empty.
 - **Wood is the resource or a straggler, and those are two icons.** A build
   order means different things by them, and each has its own figure. The wood line,
   gold mine and stone mine icons were dropped for the resource icons
@@ -196,7 +205,7 @@ Four more rules are easy to break:
   places — the hand-placed arrows are what says where the places divide, so
   that translation is exact. `Boundary` is the second line: it turns a render
   that still fails into a message with a download button, because the alternative
-  is telling somebody to clear the only copy of their work. Three shapes so
+  is telling somebody to clear the only copy of their work. Six shapes so
   far; each new one is a branch in `migrate.ts`, never a new storage key.
 
 ### `replays/` — a recorded game, read into a card
@@ -300,12 +309,13 @@ and `npm run preview` proxy `/api` to it.
   `.data/replays/strategies.json` signed with a hash of `game.py`,
   `strategy.py` and `units.json` — change the rules and every saved plan is
   read again.
-- **Buildings are the before place, techs are extras — except the Town
+- **Buildings follow the work, techs are extras — except the Town
   Centre's.** Loom, Wheelbarrow, Town Watch and anything else researched at
   the Town Centre is a step of its own, like an age-up: it is the Town
   Centre's work for that while, not a mention on someone's row. A house, a
-  market or a Town Centre goes up on the way, so `card.py` puts it in `via` beside any camp
-  the row's villagers dropped; a building with no icon is named in the extras,
+  market or a Town Centre goes up on the way, so `card.py` puts it after the
+  work in the same place, beside any camp the row's villagers dropped, and the
+  card draws it small; a building with no icon is named in the extras,
   since a place takes icons and numbers only. Every building placed is drawn
   once: a camp several rows' villagers helped build sits on the first of them,
   a camp no step claimed goes up on the way like a house, and walls — a
@@ -332,8 +342,15 @@ and `npm run preview` proxy `/api` to it.
   Every threshold there is judgement, not measurement, and units are counted
   off queue clicks, which include the unpaid ones.
 - **An imported card numbers villagers, and the "Going" bands not at all.**
-  The Town Centre is researching through them, so no villager is added there.
-  Units made in a phase are a row of their icons and nothing else.
+  The Town Centre is researching through them, so no villager is added there:
+  one first put to work in a Going band is written at the end of the band
+  before (`Opening._before_going`). Of 206 such villagers over 88 cards, about
+  half were still in the Town Centre's queue at the click — which puts the
+  age-up behind them, so "at N vils" counts when the research starts, not at
+  the click — most of the rest had stood idle, and 15 came from a second Town
+  Centre, which really can train during the research; the card leaves the
+  band to moves anyway. Units made in a phase are a row of their icons and
+  nothing else.
 - **A task held under 15 seconds never happened** (`card.BRIEF`). A villager
   sent somewhere and sent on again sooner than that — a misclick, a change of
   mind, a gather point left at once — is drawn going straight to where they
@@ -341,29 +358,32 @@ and `npm run preview` proxy `/api` to it.
   cards that drops about 3% of villager steps and 1.4% of rows.
 - **A row's new villagers are the first column, its moved ones the second.**
   Three off the sheep and one new to the hunt is "1 hunt" and
-  "hunt ← 3 sheep" on one row, and so are new villagers to one place and a move
-  to another at the same time — "2 wood", "boar ← 2 sheep", "2 deer" — unless
+  "3 hunt ← sheep" on one row, and so are new villagers to one place and a move
+  to another at the same time — "2 wood", "2 boar ← sheep", "2 deer" — unless
   the new ones go to the move's source or destination, where counting the move
   first would be the wrong order (`_paired`). A move joins the latest move row
-  of the phase when it is the same move, however long after, so "farm ← 1
-  sheep" and then "farm ← 2 sheep" are "farm ← 3 sheep". A new villager reaching the same place within
+  of the phase when it is the same move, however long after, so "1 farm ←
+  sheep" and then "2 farm ← sheep" are "3 farm ← sheep". A new villager reaching the same place within
   `MERGE` seconds of a move is folded into it, which makes the lure and the
   crew that follows it one row; one sent where the row before it went joins
   that row however long after, so one villager off the sheep building the mill
   and the next four sent to the berries are "4 berries" and
-  "berries ← mill ← 1 sheep". A camp sits in the half of whoever built it
+  "1 berries mill ← sheep". The new villagers' column names a place once in
+  a run: "1 wood lumber camp" and then "3 wood" are "4 wood lumber camp",
+  across rows that only move others, but never across one that takes anyone
+  off that work. A camp sits in the column of whoever built it
   (`via_moved`, `via_new`); the other buildings of the moment go with the new
-  villagers, or with the move on a row that has none. **All** is written only
-  where it is exactly the card's own figure for the source (`on_card` in
-  `card()`), since the app moves the whole figure for it: where the replay's
-  "nobody left" and the card's count disagree, All would carry the difference
-  somewhere it never went. The deer go in the extras as one number and one
-  deer. The card draws no figure under a word (`CardView`, `countbox--word`),
+  villagers, or with the move on a row that has none. A move is written with
+  its number and never **All**: the app would move the card's whole figure for
+  it, and where the replay's "nobody left" and the card's count disagree, All
+  would carry the difference somewhere it never went. The deer go in the
+  extras as one number and one deer. The card draws no figure under a word (`CardView`, `countbox--word`),
   and draws the word quieter than a number.
 - **Grouping must not cost the figures their truth.** A card's figures are
   read top to bottom, and a row gathers moves from a span of time, so three
   rules keep them equal to the replay's own reading at the end of every phase
-  band (364 of 364 over 12 games): a move joins a row only if its villager was
+  band (440 of 440 over 13 games, a villager first sent during an age-up read
+  as sent at its click): a move joins a row only if its villager was
   already on the source when the row began; a new villager folds into another
   row only while still there when that row starts; and never across a row that
   moves anyone on or off the same work. Each was a real drift — "All" off the

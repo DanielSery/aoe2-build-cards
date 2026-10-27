@@ -1,5 +1,6 @@
 """The replay reader's offline checks: a link names its match, a strategy reads
-in order, forward means at the enemy's door, and a cancelled building is none.
+in order, forward means at the enemy's door, a cancelled building is none, and
+a card names new villagers once.
 
     python tools/check.py
 
@@ -141,8 +142,46 @@ def check_a_cancelled_building_is_not_built(fail) -> None:
         fail(f"the buildings standing were {standing}, wanted only the House")
 
 
+def check_a_card_names_new_villagers_once(fail) -> None:
+    """New villagers to the same place in a run are one row, across a move
+    elsewhere, and none is new in a Going band: the one first sent there is
+    written before the click."""
+    from types import SimpleNamespace as Stub
+    from replays.card import JOB_ICON, Opening, building_icon
+
+    opening = object.__new__(Opening)
+    opening.ages = {"feudal": (300.0, 430.0)}
+    opening.events, opening.end = [], 600.0
+    opening.log = Stub(tcs=set(), start_villagers=[])
+    opening.__dict__["spawns"] = []
+    opening.transitions = lambda: [
+        (5.0, 1, None, "sheep", set(), set()),
+        (20.0, 2, None, "wood", {("Lumber Camp", 20.0)}, set()),
+        (30.0, 1, "sheep", "hunt", set(), set()),
+        (50.0, 3, None, "wood", set(), set()),
+        (60.0, 4, None, "wood", set(), set()),
+        (310.0, 5, None, "gold", set(), set()),
+        (320.0, 2, "wood", "gold", set(), set())]
+    card = {s["label"]: s["steps"] for s in opening.card("x", "", "")["sections"]}
+
+    def new(step):
+        to = step["to"]["items"]
+        if to and to[0]["kind"] == "count":
+            return to[0]["value"], to[1]["icon"], [i["icon"] for i in to[2:]]
+
+    dark = [new(step) for step in card["Dark Age"] if new(step)]
+    wanted = [("1", JOB_ICON["sheep"], []), ("3", JOB_ICON["wood"], [building_icon("Lumber Camp")]),
+              ("1", JOB_ICON["gold"], [])]
+    if dark != wanted:
+        fail(f"the Dark Age's new villagers were {dark}, wanted {wanted}")
+    going = [new(step) for step in card["Going Feudal"] if new(step)]
+    if going:
+        fail(f"villagers were new in the Going band: {going}")
+
+
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
-          check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built)
+          check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built,
+          check_a_card_names_new_villagers_once)
 
 
 def main() -> int:

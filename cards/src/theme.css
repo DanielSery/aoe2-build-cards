@@ -217,21 +217,31 @@ input.wide, select.wide, textarea.wide { width: 100%; }
               color: #5c6068; margin-top: 3px; }
 .countbox--word { border-color: #b4b7bd; }
 .countbox--word b { font-size: 20px; font-weight: 700; color: #5c6068; }
+/* A number and the icon after it are one thing, "4 boar": no gap, one border
+ * between them. */
+.slot > .item--count + .item--icon, .extras > .item--count + .item--icon { margin-left: -8px; }
+.item--count:has(+ .item--icon) .countbox { border-right-width: 0;
+                                            border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.item--count + .item--icon .tile { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 
-/* No wrapping. A chain that can wrap lays out differently in a clone than it
- * does on screen, and the export is a clone. */
+/* A chain never wraps inside itself. A row breaks only between its columns,
+ * and only when they do not fit: the move, then the extras, go to a line of
+ * their own. Every width on a row is fixed pixels, so the clone the export is
+ * taken from breaks it the same way; `shot.mjs` checks the PNG's size, which is
+ * what would notice if it did not. The row gap leaves a caption room. */
 .chain { display: flex; align-items: center; gap: 12px; }
+.step-body { display: flex; flex-wrap: wrap; align-items: center; row-gap: 22px; flex: 1; min-width: 0; }
 /* The three columns: new villagers, moves, extras. The new villagers are kept
  * as wide as the widest on the card wherever a move follows (`useColumns`), so
  * the moves line up; the extras keep to the right edge. Lining the extras up
  * on their left as well would add up the widest of every column, and a card
  * with one long move and one long left half would run off its own edge. */
 .column { display: flex; flex: none; }
-.step--moves > .column--new, .card--edit .step > .column--new { min-width: var(--new-column, auto); }
+.step--moves .column--new, .card--edit .step .column--new { min-width: var(--new-column, auto); }
 .column--move { margin-left: 22px; }
 .link { display: flex; align-items: center; gap: 12px; }
-.slot { display: flex; align-items: center; gap: 10px; }
-.extras { display: flex; align-items: center; gap: 10px; margin-left: auto; padding-left: 12px; }
+.slot { display: flex; align-items: center; gap: 8px; }
+.extras { display: flex; align-items: center; gap: 8px; margin-left: auto; padding-left: 12px; }
 
 .item { display: inline-flex; align-items: center; position: relative; }
 .tile { width: 64px; height: 64px; border: 3px solid #111318; border-radius: 5px;
@@ -239,6 +249,9 @@ input.wide, select.wide, textarea.wide { width: 100%; }
 /* `contain`, not `cover`: the art is not all square — a cropped deer loses its
  * antlers, which is most of what says "deer" at 64px. */
 .tile img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* What is done on the way to the place's work: there, but not what the row is about. */
+.item--minor .tile { width: 40px; height: 40px; border-width: 2px; border-radius: 4px; }
+.slot > .item--minor + .item--minor { margin-left: -3px; }
 /* Out of flow on purpose: a caption changes nothing about where its tile sits,
  * so a row that has one still lines up with the rows that do not. */
 .cap { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);

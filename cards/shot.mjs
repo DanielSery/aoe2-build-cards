@@ -57,7 +57,7 @@ await lift(page.locator(".palette .icon-btn").first());
 const dragging = await hintsOf(6);
 await page.mouse.move(5, 5);
 await page.mouse.up();
-check(atRest.join("|") === "end" && dragging.join("|") === "end|before|moved to|before|source|extras",
+check(atRest.join("|") === "end" && dragging.join("|") === "end|moved to|source|extras",
   "empty places are drawn only while dragging",
   `row 7 showed ${atRest.join("|")} at rest and ${dragging.join("|")} while dragging`);
 
@@ -77,34 +77,42 @@ check(firstGap === 14, "the number sits one gap after the row number",
 // --- numbers carry their own value and the running total ------------------
 
 // 6 on sheep is 6 on sheep; 4 on wood is 4 on the wood line, not 10 of
-// anything. All six off the sheep go to the hunt, so 6 new make it 12; 3 off
-// the hunt leave 9, and 5 more leave 4. "All" is a word and carries no
-// figure; a militia names no work, so it carries none either.
+// anything. All six off the sheep go to the hunt, so 6 new make it 12; 3 of
+// them to the stone are 3 there. "All" is a word and carries no figure; a
+// tower or a militia names no work, so it carries none either.
 const numbers = await page.$$eval(".canvas .card .countbox",
   (els) => els.map((e) => [e.querySelector("b")?.textContent, e.querySelector("i")?.textContent ?? null]));
-const wanted = [["6", "6"], ["4", "4"], ["6", "12"], ["All", null], ["3", "9"], ["5", "4"], ["3", null]];
+const wanted = [["6", "6"], ["4", "4"], ["6", "12"], ["All", null], ["3", "3"], ["5", null], ["3", null]];
 check(JSON.stringify(numbers) === JSON.stringify(wanted),
   "each number totals its own work, and a move carries its villagers",
   `the numbers were ${JSON.stringify(numbers)}`);
 
-// Where moved villagers go needs no number: the source's says how many. Make
-// it 5 and the hunt keeps 7.
-await row(4).locator(".slot--from .countbox").click();
-await page.locator(".inspector label:has-text('Number') + input").fill("5");
-const leaving = await row(4).locator(".slot--from .countbox i").textContent();
-await page.click(".topbar button:has-text('Undo')");
-check(leaving === "7", "a number in source takes villagers away",
-  `5 off the hunt's 12 left ${leaving}, wanted 7`);
-
 // Counting villagers, a row wears every work's figure added up. A move keeps
-// the total; the five sent to the tower go to no work the card counts.
+// the total; the five sent to the tower go to no work the card counts, so the
+// number on where they went is what came off the hunt: make it 7 and 9 are left.
 await page.click(".canvas .card-head");
 await page.locator(".inspector label:has-text('Row numbers count') + select").selectOption("villagers");
 const byVillagers = await rows.evaluateAll((els) => els.slice(0, 6).map((e) => e.querySelector(".step-no")?.textContent));
+await row(5).locator(".slot--moveTo .countbox").click();
+await page.locator(".inspector label:has-text('Number') + input").fill("7");
+const afterSeven = await row(5).locator(".step-no").textContent();
+await page.click(".topbar button:has-text('Undo')");
 await page.click(".topbar button:has-text('Undo')");
 check(JSON.stringify(byVillagers) === JSON.stringify(["6", "10", "16", "16", "16", "11"]),
   "row numbers can count villagers, and a move keeps the total",
   `the first six rows were numbered ${JSON.stringify(byVillagers)}, wanted 6, 10, 16, 16, 16, 11`);
+check(afterSeven === "9", "the number where moved villagers go takes them off the source",
+  `7 off the hunt left the row at ${afterSeven}, wanted 9`);
+
+// "4 boar": a number and its icon are one thing, and what is done on the way
+// after the work is drawn small.
+const [numberRight, iconLeft] = await row(4).locator(".slot--moveTo .item").evaluateAll((els) =>
+  [els[0].getBoundingClientRect().right, els[1].getBoundingClientRect().left].map(Math.round));
+const [workTile, wayTile] = await row(4).locator(".slot--moveTo .tile").evaluateAll((els) =>
+  els.map((e) => Math.round(e.getBoundingClientRect().height)));
+check(numberRight === iconLeft && wayTile < workTile,
+  "a number touches its icon, and what is done on the way is small",
+  `the number ends at ${numberRight} and the icon starts at ${iconLeft}; tiles ${workTile} and ${wayTile}px`);
 
 // Three columns: every move starts at one x, and every row's extras end at one.
 const edgesOf = (rows, part, edge) => page.locator(`.export-copy .card ${rows}`).evaluateAll((els, [part, edge]) =>
@@ -117,10 +125,10 @@ check(moveLefts.length === 4 && new Set(moveLefts).size === 1 && extrasRights.le
 
 // --- a caption must not move anything -------------------------------------
 
-const tops = await row(4).locator(".tile").evaluateAll(
-  (els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
-check(new Set(tops).size === 1, "every tile on a row sits on one line",
-  `tile tops on row 5 were ${tops.join(", ")}`);
+const middles = await row(4).locator(".tile").evaluateAll(
+  (els) => els.map((e) => { const r = e.getBoundingClientRect(); return Math.round(r.top + r.height / 2); }));
+check(new Set(middles).size === 1, "every tile on a row sits on one line",
+  `tile middles on row 5 were ${middles.join(", ")}`);
 
 // Put a caption on a row that has none and watch nothing move. Comparing two
 // different rows would only have measured their dividers.
@@ -252,7 +260,7 @@ check(caret === "after" && afterDrop === "resource-wood.png|tech-double-bit-axe.
   "the caret says which edge, and the item lands there",
   `caret ${caret}, ${start} → ${afterDrop}`);
 
-const leftCaret = await dragOnto(0, 2, 0.25);
+const leftCaret = await dragOnto(0, 2, 0.35);
 const leftDrop = await order();
 await page.click(".topbar button:has-text('Undo')");
 check(leftCaret === "before" && leftDrop === "resource-wood.png|#4|tech-double-bit-axe.png",
@@ -278,6 +286,22 @@ const emptied = await iconsIn(0, "to").count();
 check(landed === grew + 1 && emptied === 0, "an item drags to another row",
   `row 3 went ${grew} → ${landed}, row 1 left with ${emptied}`);
 await page.click(".topbar button:has-text('Undo')");
+
+// --- a row too long for one line ------------------------------------------
+
+// Its move goes to a line of its own, and does not drag every other move on
+// the card out of line with it. Left in place for the export, which has to
+// break the row exactly as the card does.
+await row(2).locator(".slot--to").click({ position: { x: 3, y: 3 } });
+for (let i = 0; i < 12; i++) await page.click(".palette .icon-btn >> nth=0");
+const broken = await page.locator(".export-copy .card .step").nth(2).evaluate((e) => {
+  const [fresh, move] = [".column--new", ".column--move"].map((c) => e.querySelector(c).getBoundingClientRect());
+  return move.top >= fresh.bottom - 1;
+});
+const stillLined = await edgesOf(".step--moves", ".column--move .slot", "left");
+check(broken && stillLined.length === 4 && new Set(stillLined.slice(1)).size === 1,
+  "a row too long for one line breaks before its move, and the other moves stay in line",
+  `broke: ${broken}; moves started at ${stillLined.join(", ")}`);
 
 // --- the library and the export -------------------------------------------
 
@@ -306,6 +330,8 @@ const [w, h] = [png.readUInt32BE(16), png.readUInt32BE(20)];
 check(Math.abs(w - box.w * SCALE) <= 2 && Math.abs(h - box.h * SCALE) <= 2,
   `the PNG is ${w}×${h}, the card's own size at ${SCALE}×`,
   `PNG ${w}×${h} against a card of ${box.w}×${box.h} — the export reflowed`);
+
+for (let i = 0; i < 12; i++) await page.click(".topbar button:has-text('Undo')");
 
 // --- zoom, which the export must not see ----------------------------------
 
