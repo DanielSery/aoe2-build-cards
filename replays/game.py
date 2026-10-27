@@ -48,6 +48,9 @@ UNPARSED = {"SPECIAL", "UNGARRISON"}  # mgz reads their unit ids a byte out of p
 LAMED = {"sheep", "boar", "deer"}  # what a villager takes off the enemy rather than works
 SOLDIERING = {"FORMATION", "PATROL", "STANCE", "DE_ATTACK_MOVE", "ATTACK_GROUND", "GUARD", "FOLLOW"}
 BUILDING = {"BUILD", "REPAIR", "WALL"}
+# The commands a selection of units is given, which share one selection; a
+# building's own commands -- queue, research, gather point -- do not.
+UNIT_COMMANDS = SOLDIERING | BUILDING | {"MOVE", "ORDER", "STOP", "DE_AUTOSCOUT", "DROP_RELIC"}
 MATCH = 10.0           # a deleted id first named this long after a placement could be anything
 BUILD_FALLBACK = 60.0  # seconds to build what the game data does not know
 TOWN_CENTRE = 109
@@ -148,14 +151,21 @@ class Replay:
                 self._trees[(int(n.x) // 4, int(n.y) // 4)].append((n.x, n.y))
 
     def _resolve_selections(self) -> None:
-        """An empty unit list means "the units I last sent this kind of command
-        to", remembered per player and per command type: a move straight after
-        queueing at the Town Centre is not a move of the Town Centre."""
+        """An empty unit list means "the units I last gave a command to",
+        remembered per player across every unit command -- a move, a
+        right-click, a build, a stance -- since they act on one selection: a
+        right-click straight after moving the scout is the scout's. A
+        building's commands keep their own, so a move straight after queueing
+        at the Town Centre is not a move of the Town Centre. Remembered per
+        command type instead, that right-click went to whoever was last
+        right-clicked: where the two readings differ, this one names units
+        last sent a median 2 tiles from the click, and that one 12."""
         last: dict[tuple, list] = {}
         for a in self.match.actions:
             if a.player is None or "object_ids" not in a.payload:
                 continue
-            key = (a.player.number, a.type.name)
+            kind = a.type.name
+            key = (a.player.number, "units" if kind in UNIT_COMMANDS else kind)
             if a.payload["object_ids"]:
                 last[key] = a.payload["object_ids"]
             else:
@@ -311,7 +321,8 @@ class PlayerLog:
         if kind in ("wood", "farm", "pasture"):
             return kind
         if kind == "mill":
-            return "berries" if self.r.nearest(b.x, b.y, {"berries"}, 6.0) else "farm"
+            # Put down where a deer stood, it is for the hunters.
+            return self.r.nearest(b.x, b.y, {"berries"}, 6.0) or self.r.nearest(b.x, b.y, {"deer"}, 4.0) or "farm"
         if kind == "mine":
             return self.r.nearest(b.x, b.y, {"gold", "stone"}, 6.0)
         if kind == "any":

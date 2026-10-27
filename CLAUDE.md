@@ -316,11 +316,21 @@ and `npm run preview` proxy `/api` to it.
   a million and filtered anyway; on Socotra, whose ids are small, one
   ungarrison bounded every unit of the game to 0:32 and the card counted 63
   villagers at the Feudal click.
-- **An empty selection is per player *and* per command type.** mgz's `Inputs`
-  cached it by type alone and handed one player's units to another's command;
-  `mgzfix` turns that off and `Replay._resolve_selections` does it right. Per
-  player across types is wrong too: a move straight after queueing at the Town
-  Centre is not a move of the Town Centre.
+- **An empty selection is the units the player last commanded.** A move or
+  a right-click with no unit list goes to whoever that player last gave any
+  unit's command to — a move, a right-click, a build, a stance
+  (`game.UNIT_COMMANDS`) — since those act on one selection. A building's
+  own commands keep theirs: a move straight after queueing at the Town Centre
+  is not a move of the Town Centre. mgz's `Inputs` cached it by type alone and
+  handed one player's units to another's command; `mgzfix` turns that off and
+  `Replay._resolve_selections` does it. It was per command type for a while,
+  which gave a right-click straight after the scout's move to whichever
+  villager was last right-clicked: where the two readings differ (about one
+  empty selection in six), the units this one names were last sent a median
+  2 tiles from the click and the other's 12. That misreading was most of the
+  villagers "sent forward" who never went — a stone miner building a house at
+  home was read as fighting at the enemy's tower 14 seconds later — and over
+  40 games it took the forward villager-steps from 720 to 320.
 - **The game data is older than the games.** `civdata.json` is VER 8.9 and the
   replays are 9.4, and a right-click on a type nothing names sets no job — so
   the move silently leaves the card. That is how a snow Arena lost every
@@ -359,7 +369,11 @@ and `npm run preview` proxy `/api` to it.
   a camp counts as on the way only in the first `ON_THE_WAY` seconds of its
   builders' step (the same crew's second lumber camp ten minutes later went
   up when it went up, not beside the first),
-  a camp no step claimed goes up on the way like a house, and walls — a
+  a camp no step claimed goes on the latest row of the phase sending
+  villagers to the work it serves that has no such camp yet, or on the way
+  like a house when there is none (a mill put up a minute after its builder
+  reached the berries had been drawn beside the boar), a mill put down where
+  a deer stood is the hunters' (`PlayerLog.dropsite_job`), and walls — a
   dragged wall is a `WALL` command, not a `BUILD` — are drawn once per phase
   band. A tech with no icon of its own wears its unit's if it is that unit's
   upgrade (Man-at-Arms), as its button in the game does, and a unit with no

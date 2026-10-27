@@ -595,11 +595,14 @@ class Opening:
                 row[half] -= placed
                 placed |= row[half]
 
-        def attach(t: float, item: dict, part: str) -> None:
+        def attach(t: float, item: dict, part: str, work: str | None = None) -> None:
             """Onto the row being worked when it happened, never across a phase
             band: a castle dropped on landing is Castle Age, whatever came last.
             Never onto a trip forward either, or a house at home reads as built
-            at the enemy's."""
+            at the enemy's. A camp or a mill goes onto the latest row sending
+            villagers to the work it serves, if one has none yet: built a minute
+            after its builder reached the berries, a mill drawn beside the boar
+            reads as the hunters'."""
             here = [row for row in rows if self.section_of(row["t"]) == self.section_of(t)
                     and not row["research"] and row["to"] != "forward"]
             if not here:
@@ -609,6 +612,11 @@ class Opening:
             for row in here:
                 if row["t"] <= t:
                     target = row
+            if work:
+                serving = [row for row in here if row["t"] <= t and row["to"] == work
+                           and item["icon"] not in {i.get("icon") for _, i in row["built"]}
+                           | {building_icon(name) for name, _ in row["via_moved"] | row["via_new"]}]
+                target = serving[-1] if serving else target
             target[part].append((t, item))
 
         # A tech is dated by its last click, since none can follow the one
@@ -626,7 +634,8 @@ class Opening:
                         continue
                     walled.add((self.section_of(e.t), e.building))
                 key = building_icon(e.building)
-                attach(e.t, icon(key) if key else text(e.building), "built")
+                serves = e.building in DROPSITES and e.job != "forward" and key
+                attach(e.t, icon(key) if key else text(e.building), "built", card_job(e.job) if serves else None)
             elif e.kind == "research" and e.what not in AGE_TECHS and last[e.what] is e:
                 key = tech_icon(e.what)
                 item = icon(key) if key else text(e.what)

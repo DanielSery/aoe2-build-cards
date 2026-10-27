@@ -308,13 +308,53 @@ def check_a_move_joining_new_villagers_shares_their_place(fail) -> None:
         fail(f"the rows were {rows}, wanted {wanted}")
 
 
+def check_an_empty_selection_is_the_last_units_commanded(fail) -> None:
+    """A command with no unit list goes to the units this player last gave
+    any unit's command to -- the scout just moved, not the villager last
+    right-clicked -- and never to a building the player last queued at."""
+    from types import SimpleNamespace as Stub
+    from replays.game import Replay
+
+    def command(kind, ids):
+        return Stub(player=Stub(number=1), type=Stub(name=kind), payload={"object_ids": list(ids)})
+
+    actions = [command("ORDER", [10]), command("MOVE", [99]), command("ORDER", []),
+               command("DE_QUEUE", [500]), command("MOVE", [])]
+    Replay._resolve_selections(Stub(match=Stub(actions=actions)))
+    got = [a.payload["object_ids"] for a in actions[2::2]]
+    if got != [[99], [99]]:
+        fail(f"the empty selections were read as {got}, wanted the scout both times")
+
+
+def check_a_mill_goes_with_the_berries(fail) -> None:
+    """A mill no step claimed -- put up a while after its builder reached
+    the berries -- is drawn with the berries, not on whatever row came last."""
+    from types import SimpleNamespace as Stub
+    from replays.card import JOB_ICON, Opening, building_icon
+    from replays.game import Event
+
+    opening = object.__new__(Opening)
+    opening.ages, opening.end = {}, 600.0
+    opening.events = [Event(120.0, "build", [1], job="berries", building="Mill", site=("Mill", 120.0))]
+    opening.log = Stub(tcs=set(), start_villagers=[])
+    opening.__dict__["spawns"] = []
+    opening.transitions = lambda: [(5.0, 1, None, "berries", set(), set()), (100.0, 2, None, "hunt", set(), set())]
+    rows = [[i.get("icon") or i.get("value") for i in step["to"]["items"]]
+            for step in opening.card("x", "", "")["sections"][0]["steps"]]
+    wanted = [["1", JOB_ICON["berries"], building_icon("Mill")], ["1", JOB_ICON["hunt"]]]
+    if rows != wanted:
+        fail(f"the rows were {rows}, wanted {wanted}")
+
+
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built,
           check_a_card_names_new_villagers_once,
           check_a_trip_forward_is_no_work,
           check_a_short_task_is_not_on_the_card,
           check_loom_waits_for_the_villagers_ahead,
-          check_a_move_joining_new_villagers_shares_their_place)
+          check_a_move_joining_new_villagers_shares_their_place,
+          check_an_empty_selection_is_the_last_units_commanded,
+          check_a_mill_goes_with_the_berries)
 
 
 def main() -> int:
