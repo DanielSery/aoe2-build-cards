@@ -42,8 +42,8 @@ PHASES = [("Dark Age", "dark"), ("Going Feudal", "transition"), ("Feudal Age", "
 
 VILLAGER_SECONDS = 25.0
 SPACING = 0.9       # of a villager's time: slack for a faster Town Centre, as Persian age-ups run 5-9% under the nominal time
-JITTER = 6.0        # an order replaced this soon was a misclick
-FIRST_ORDER = 15.0  # sent elsewhere this soon after appearing, a villager never worked the gather point
+BRIEF = 15.0        # a task replaced this soon -- a misclick, a change of mind, a gather point left at once -- is not on the card
+FIRST_ORDER = 15.0  # how long before a step a camp its villager put up, or a deer it was sent at, still belongs to it
 ROUND_TRIP = 25.0   # there and straight back is an errand, not a reassignment
 MERGE = 45.0        # commands this close with the same meaning are one row
 SWAP = 90.0         # one villager each way inside a phase is a swap, not a change of plan
@@ -300,10 +300,8 @@ class Opening:
         out = []
         for v, plan in plans.items():
             plan.sort(key=lambda p: p[0])
-            spawned = isinstance(v, str) or v > self.r.last_starting_id
             kept = [p for k, p in enumerate(plan)
-                    if k + 1 == len(plan) or k == 0 and p[1] == "idle"
-                    or plan[k + 1][0] - p[0] > (FIRST_ORDER if spawned and k == 0 else JITTER)]
+                    if k + 1 == len(plan) or k == 0 and p[1] == "idle" or plan[k + 1][0] - p[0] >= BRIEF]
             steps: list[tuple] = []
             for step in kept:
                 if steps and steps[-1][1] == step[1]:

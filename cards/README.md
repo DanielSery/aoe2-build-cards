@@ -70,8 +70,9 @@ unnumbered — no villager is made while the age is researching. Buildings,
 techs, age times, gather points and which villagers were sent where come
 straight from the replay. **How many villagers** a row moves is partly inferred: the
 replay records every queue click, including the ones there was no food for,
-so the age-up row's "at N vils" is an estimate. Misclicks, and single
-villagers swapped back and forth inside a phase, are left out.
+so the age-up row's "at N vils" is an estimate. A task a villager held for
+less than 15 seconds before being sent elsewhere is left out, and so are single
+villagers swapped back and forth inside a phase.
 
 ## The format
 

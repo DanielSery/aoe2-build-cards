@@ -310,6 +310,11 @@ and `npm run preview` proxy `/api` to it.
 - **An imported card numbers villagers, and the "Going" bands not at all.**
   The Town Centre is researching through them, so no villager is added there.
   Units made in a phase are a row of their icons and nothing else.
+- **A task held under 15 seconds never happened** (`card.BRIEF`). A villager
+  sent somewhere and sent on again sooner than that — a misclick, a change of
+  mind, a gather point left at once — is drawn going straight to where they
+  went next, and a detour back to the same work is no move at all. Over 88
+  cards that drops about 3% of villager steps and 1.4% of rows.
 - **A row says how many leave and how many arrive.** `from` carries the
   villagers taken off the source and `to` everyone who ends up there, so
   "4 hunt ← 3 sheep" is three off the sheep and one more besides. A new
