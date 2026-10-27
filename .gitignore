@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+.venv/
 
 # downloaded replays, match records, opened files and the plans read from them
 .data/

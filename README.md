@@ -25,9 +25,48 @@ replay reader runs on your own machine.
 
 ## What you need
 
-- **Python 3.12 or newer** (developed on 3.14) — <https://www.python.org/downloads/>
-- **Node.js 20.19+ or 22.12+** (developed on 24) — <https://nodejs.org/>
-- **git**, to clone it
+**git**, **Python 3.12 or newer** and **Node.js 20.19+ or 22.12+**. See what
+you already have — each prints a version if it is installed:
+
+```
+git --version
+python --version        # python3 --version on macOS and Linux
+node --version
+```
+
+Install whatever is missing or older than that.
+
+**Windows** — in PowerShell, with `winget`, which comes with Windows 10 and
+11. An installer may ask for administrator permission. Open a new PowerShell
+window afterwards, or it will not find what was just installed.
+
+```powershell
+winget install --id Git.Git -e
+winget install --id Python.Python.3.14 -e
+winget install --id OpenJS.NodeJS.LTS -e
+```
+
+**macOS** — with [Homebrew](https://brew.sh/). If `brew --version` finds
+nothing, the first line installs it:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install git python@3.14 node
+```
+
+**Linux** — git and Python from your distribution, and Node.js through
+[nvm](https://github.com/nvm-sh/nvm), since a distribution's own is often too
+old (Ubuntu 24.04's is 18). On Debian or Ubuntu:
+
+```bash
+sudo apt update && sudo apt install git python3 python3-venv
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh | bash
+# then in a new terminal:
+nvm install --lts
+```
+
+On Fedora the first line is `sudo dnf install git python3`. Debian 12's
+Python is 3.11, too old; Debian 13 and Ubuntu 24.04 are new enough.
 
 ## Set it up (once)
 
@@ -40,25 +79,45 @@ python -m pip install -r requirements.txt
 cd cards; npm ci; npm run build; cd ..
 ```
 
-macOS / Linux — the same with `python3`:
+If `python` is not found, use `py` instead — the launcher Python's installer
+puts on the PATH. If PowerShell refuses to run `npm` because "running
+scripts is disabled on this system", allow scripts you have on your own
+computer, once, and try again:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+macOS / Linux — the Python packages go in a folder of the project's own
+(`.venv`), since Homebrew's Python and recent Debian and Ubuntu refuse to
+`pip install` into the system's:
 
 ```bash
 git clone https://github.com/DanielSery/aoe2-build-cards.git
 cd aoe2-build-cards
-python3 -m pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 (cd cards && npm ci && npm run build)
 ```
 
+If `python3 --version` says older than 3.12, name the newer one instead:
+`python3.14 -m venv .venv`.
+
 `npm run build` writes the app to `cards/dist/`. Run it again after pulling
-changes to the app. On Windows, `py` works wherever `python` is not on the
-PATH.
+changes to the app.
 
 ## Run it
 
-From the repository folder:
+From the repository folder — on Windows:
 
 ```powershell
 python -m uvicorn replays.server:app --port 8030
+```
+
+on macOS and Linux:
+
+```bash
+.venv/bin/python -m uvicorn replays.server:app --port 8030
 ```
 
 and once it prints `Uvicorn running on http://127.0.0.1:8030`, open
@@ -104,6 +163,8 @@ recorded like one with it. The plans in the player list count queued units the
 same way, and their thresholds are judgement rather than measurement.
 
 ## Working on it
+
+On macOS and Linux, `python` below is `.venv/bin/python`.
 
 ```powershell
 python tools/check.py               # the replay reader's offline checks
