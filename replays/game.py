@@ -17,7 +17,8 @@ from pathlib import Path
 
 from aoe2planner.gamedata import GameData
 
-CATALOGUE = GameData.load().resource_nodes["_catalogue"]
+DATA = GameData.load()
+CATALOGUE = DATA.resource_nodes["_catalogue"]
 # Every unit name to its upgrade line, written by tools/fetch_card_icons.py.
 UNIT_LINES: dict[str, dict] = json.loads(Path(__file__).with_name("units.json").read_text(encoding="utf-8"))
 
@@ -44,6 +45,8 @@ AGE_TECHS = {"Feudal Age": "feudal", "Castle Age": "castle", "Imperial Age": "im
 UNPARSED = {"SPECIAL", "UNGARRISON"}  # mgz reads their unit ids a byte out of place
 SOLDIERING = {"FORMATION", "PATROL", "STANCE", "DE_ATTACK_MOVE", "ATTACK_GROUND", "GUARD", "FOLLOW"}
 BUILDING = {"BUILD", "REPAIR", "WALL"}
+MATCH = 10.0           # a deleted id first named this long after a placement could be anything
+BUILD_FALLBACK = 60.0  # seconds to build what the game data does not know
 
 
 def job_of_type(type_id: int) -> str | None:
@@ -110,6 +113,8 @@ class Replay:
         self.last_starting_id = max(self.nodes)
         self._resolve_selections()
         self._bound_ids, self._bounds = self._creation_bounds()
+        self.commanded = {i for a in match.actions if a.type.name not in UNPARSED | {"DELETE"}
+                          for i in a.payload.get("object_ids") or [] if isinstance(i, int)}
 
         self._sites: dict[str, list] = defaultdict(list)
         self._trees: dict[tuple, list] = defaultdict(list)
@@ -189,10 +194,43 @@ class PlayerLog:
         own = [n for n in replay.nodes.values() if n.owner == number]
         self.tcs = {n.id for n in own if n.name == "Town Center"}
         self.start_villagers = [n.id for n in own if n.name == "Villager"]
+        self.cancelled = self._cancelled()
         self.placed = [Placed(secs(a), building_name(a.payload), a.position.x, a.position.y)
-                       for a in self.actions if a.type.name == "BUILD" and a.position is not None]
+                       for a in self.actions if self.built(a)]
         self.unresolved: Counter = Counter()
         self.soldiers = self._soldiers()
+
+    def _cancelled(self) -> set[int]:
+        """The BUILD commands whose foundation was deleted before one villager
+        could have finished it, as the `id()` of each action.
+
+        A replay never says a building was finished, and a DELETE names an id
+        and nothing else. But ids are handed out in creation order, so an id
+        nobody ever commanded belongs to the last thing this player placed
+        before anything that new was named (`Replay.created_by`). Where that is
+        more than `MATCH` seconds back, which placement it was is a guess, and
+        the building stands; so does one destroyed before it was finished,
+        which no command records at all."""
+        placing = [a for a in self.actions if a.type.name in ("BUILD", "WALL")]
+        out: set[int] = set()
+        for a in self.actions:
+            if a.type.name != "DELETE":
+                continue
+            for d in a.payload.get("object_ids") or []:
+                if not isinstance(d, int) or d <= self.r.last_starting_id or d in self.r.commanded:
+                    continue
+                bound = self.r.created_by(d)
+                placed = max((b for b in placing if secs(b) <= bound), key=secs, default=None)
+                if placed is None or placed.type.name != "BUILD" or bound - secs(placed) > MATCH:
+                    continue
+                building = DATA.unit_by_id(placed.payload.get("building_id")) or {}
+                if secs(a) - secs(placed) <= (building.get("build_time") or BUILD_FALLBACK):
+                    out.add(id(placed))
+        return out
+
+    def built(self, action) -> bool:
+        """A placed building that was not cancelled."""
+        return action.type.name == "BUILD" and action.position is not None and id(action) not in self.cancelled
 
     def _soldiers(self) -> set[int]:
         """New units that were given soldiers' commands and never did a
@@ -274,7 +312,7 @@ class PlayerLog:
         out: list[Event] = []
         for a in self.actions:
             t, kind, p = secs(a), a.type.name, a.payload
-            if kind == "BUILD" and a.position is not None:
+            if self.built(a):
                 b = Placed(t, building_name(p), a.position.x, a.position.y)
                 out.append(Event(t, "build", self.villagers(p.get("object_ids", [])),
                                  job=self.dropsite_job(b), building=b.name, site=(b.name, t)))

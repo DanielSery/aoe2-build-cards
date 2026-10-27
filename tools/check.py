@@ -1,5 +1,5 @@
 """The replay reader's offline checks: a link names its match, a strategy reads
-in order, and forward means at the enemy's door.
+in order, forward means at the enemy's door, and a cancelled building is none.
 
     python tools/check.py
 
@@ -115,8 +115,34 @@ def check_forward_is_at_the_enemy(fail) -> None:
             fail(f"{[(b.name, b.x, b.y) for b in placed]} with {len(actions)} deletes read {got}, wanted {want}")
 
 
+def check_a_cancelled_building_is_not_built(fail) -> None:
+    """A foundation deleted before one villager could have finished it is
+    left out; one whose deleted id cannot be pinned to it stands."""
+    from datetime import timedelta
+    from types import SimpleNamespace as Stub
+    from replays.game import PlayerLog
+
+    player = Stub(number=1)
+
+    def act(kind: str, t: float, **payload):
+        return Stub(type=Stub(name=kind), player=player, payload=payload, timestamp=timedelta(seconds=t),
+                    position=Stub(x=10.0, y=10.0) if kind == "BUILD" else None)
+
+    bounds = {201: 61.0, 202: 300.0}
+    replay = Stub(match=Stub(players=[player], actions=[
+        act("BUILD", 60, building="Barracks", building_id=12, object_ids=[]),
+        act("DELETE", 62, object_ids=[201]),
+        act("BUILD", 100, building="House", building_id=70, object_ids=[]),
+        act("DELETE", 400, object_ids=[202])]),
+        nodes={}, last_starting_id=100, commanded=set(), created_by=bounds.__getitem__)
+    replay.match.actions.sort(key=lambda a: a.timestamp)
+    standing = [b.name for b in PlayerLog(replay, 1).placed]
+    if standing != ["House"]:
+        fail(f"the buildings standing were {standing}, wanted only the House")
+
+
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
-          check_forward_is_at_the_enemy)
+          check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built)
 
 
 def main() -> int:

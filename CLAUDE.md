@@ -220,6 +220,16 @@ and `npm run preview` proxy `/api` to it.
   Roman at 22 against at most 18. Two things stop the spacing: a second Town
   Centre, and an age landing, since more villagers right after one than a
   Town Centre can train came with the age (the Bengalis get two at each).
+- **A cancelled building is no building.** A replay never says a building was
+  finished, and a DELETE names an id and nothing else. Ids are handed out in
+  creation order, so a deleted id nobody ever commanded is pinned to the last
+  thing that player placed before anything that new was named
+  (`PlayerLog._cancelled`). Where that is a BUILD less than `MATCH` seconds
+  back, and the delete came before one villager could have finished it (the
+  game data's build time), the building is left out of everything — the card,
+  the strategy, a boom's count. Over 14 cached games that is about 1.5% of
+  BUILDs, most deleted within five seconds of being placed. A foundation the
+  enemy destroyed is not a command, so it still counts.
 - **Not every new unit right-clicked onto a resource is a villager.** A
   replay never says what a unit is, and a militia clicked onto a berry bush
   reads exactly like a villager sent there. `PlayerLog.soldiers` leaves out a
