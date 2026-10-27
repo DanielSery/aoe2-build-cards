@@ -37,13 +37,20 @@ node --version
 Install whatever is missing or older than that.
 
 **Windows** — in PowerShell, with `winget`, which comes with Windows 10 and
-11. An installer may ask for administrator permission. Open a new PowerShell
-window afterwards, or it will not find what was just installed.
+11. An installer may ask for administrator permission.
 
 ```powershell
 winget install --id Git.Git -e
 winget install --id Python.Python.3.14 -e
 winget install --id OpenJS.NodeJS.LTS -e
+```
+
+A window that was already open does not see what was just installed, and
+neither does a new terminal inside VS Code until VS Code itself is restarted.
+Open a fresh PowerShell window, or reload the PATH in the one you have:
+
+```powershell
+$env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
 ```
 
 **macOS** — with [Homebrew](https://brew.sh/). If `brew --version` finds
