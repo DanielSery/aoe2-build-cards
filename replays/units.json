@@ -1,0 +1,1424 @@
+{
+ "Arambai": {
+  "line": "Arambai",
+  "icon": "unit-arambai",
+  "unique": true,
+  "building": 82
+ },
+ "Arbalester": {
+  "line": "Archer",
+  "icon": "unit-archer",
+  "unique": false,
+  "building": 87
+ },
+ "Archer": {
+  "line": "Archer",
+  "icon": "unit-archer",
+  "unique": false,
+  "building": 87
+ },
+ "Armored Elephant": {
+  "line": "Armored Elephant",
+  "icon": "unit-armored_elephant",
+  "unique": false,
+  "building": 49
+ },
+ "Ballista Elephant": {
+  "line": "Ballista Elephant",
+  "icon": "unit-ballista_elephant",
+  "unique": true,
+  "building": 82
+ },
+ "Battering Ram": {
+  "line": "Battering Ram",
+  "icon": "unit-battering_ram",
+  "unique": false,
+  "building": 49
+ },
+ "Battle Elephant": {
+  "line": "Battle Elephant",
+  "icon": "unit-battle_elephant",
+  "unique": false,
+  "building": 101
+ },
+ "Berserk": {
+  "line": "Berserk",
+  "icon": "unit-berserk",
+  "unique": true,
+  "building": 82
+ },
+ "Blackwood Archer": {
+  "line": "Blackwood Archer",
+  "icon": "unit-blackwood_archer",
+  "unique": true,
+  "building": 82
+ },
+ "Bolas Rider": {
+  "line": "Bolas Rider",
+  "icon": "unit-bolas_rider",
+  "unique": true,
+  "building": 87
+ },
+ "Bombard Cannon": {
+  "line": "Bombard Cannon",
+  "icon": "unit-bombard_cannon",
+  "unique": false,
+  "building": 49
+ },
+ "Boyar": {
+  "line": "Boyar",
+  "icon": "unit-boyar",
+  "unique": true,
+  "building": 82
+ },
+ "Camel Archer": {
+  "line": "Camel Archer",
+  "icon": "unit-camel_archer",
+  "unique": true,
+  "building": 82
+ },
+ "Camel Rider": {
+  "line": "Camel Rider",
+  "icon": "unit-camel",
+  "unique": false,
+  "building": 101
+ },
+ "Camel Scout": {
+  "line": "Camel Scout",
+  "icon": "unit-camel_scout",
+  "unique": true,
+  "building": 101
+ },
+ "Cannon Galleon": {
+  "line": "Cannon Galleon",
+  "icon": "unit-cannon_galleon",
+  "unique": false,
+  "building": 45
+ },
+ "Cao Cao": {
+  "line": "Cao Cao",
+  "icon": "unit-cao_cao",
+  "unique": true,
+  "building": 82
+ },
+ "Capped Ram": {
+  "line": "Battering Ram",
+  "icon": "unit-battering_ram",
+  "unique": false,
+  "building": 49
+ },
+ "Caravel": {
+  "line": "Caravel",
+  "icon": "unit-caravel",
+  "unique": true,
+  "building": 45
+ },
+ "Carrack": {
+  "line": "Hulk",
+  "icon": "unit-hulk",
+  "unique": false,
+  "building": 45
+ },
+ "Cataphract": {
+  "line": "Cataphract",
+  "icon": "unit-cataphract",
+  "unique": true,
+  "building": 82
+ },
+ "Catapult Galleon": {
+  "line": "Catapult Galleon",
+  "icon": "unit-catapult_galleon",
+  "unique": false,
+  "building": 45
+ },
+ "Cavalier": {
+  "line": "Knight",
+  "icon": "unit-knight",
+  "unique": false,
+  "building": 101
+ },
+ "Cavalry Archer": {
+  "line": "Cavalry Archer",
+  "icon": "unit-cavalry_archer",
+  "unique": false,
+  "building": 87
+ },
+ "Centurion": {
+  "line": "Centurion",
+  "icon": "unit-centurion",
+  "unique": true,
+  "building": 82
+ },
+ "Chakram Thrower": {
+  "line": "Chakram Thrower",
+  "icon": "unit-chakram_thrower",
+  "unique": true,
+  "building": 82
+ },
+ "Champi Runner": {
+  "line": "Champi Scout",
+  "icon": "unit-champi_scout",
+  "unique": false,
+  "building": 12
+ },
+ "Champi Scout": {
+  "line": "Champi Scout",
+  "icon": "unit-champi_scout",
+  "unique": false,
+  "building": 12
+ },
+ "Champi Warrior": {
+  "line": "Champi Scout",
+  "icon": "unit-champi_scout",
+  "unique": false,
+  "building": 12
+ },
+ "Champion": {
+  "line": "Militia",
+  "icon": "unit-militia",
+  "unique": false,
+  "building": 12
+ },
+ "Chu Ko Nu": {
+  "line": "Chu Ko Nu",
+  "icon": "unit-chu_ko_nu",
+  "unique": true,
+  "building": 82
+ },
+ "Composite Bowman": {
+  "line": "Composite Bowman",
+  "icon": "unit-composite_bowman",
+  "unique": true,
+  "building": 82
+ },
+ "Condottiero": {
+  "line": "Condottiero",
+  "icon": "unit-condottiero",
+  "unique": true,
+  "building": 12
+ },
+ "Conquistador": {
+  "line": "Conquistador",
+  "icon": "unit-conquistador",
+  "unique": true,
+  "building": 82
+ },
+ "Coustillier": {
+  "line": "Coustillier",
+  "icon": "unit-coustillier",
+  "unique": true,
+  "building": 82
+ },
+ "Crossbowman": {
+  "line": "Archer",
+  "icon": "unit-archer",
+  "unique": false,
+  "building": 87
+ },
+ "Demolition Raft": {
+  "line": "Demolition Raft",
+  "icon": "unit-demolition_raft",
+  "unique": false,
+  "building": 45
+ },
+ "Demolition Ship": {
+  "line": "Demolition Raft",
+  "icon": "unit-demolition_raft",
+  "unique": false,
+  "building": 45
+ },
+ "Dragon Ship": {
+  "line": "Fire Galley",
+  "icon": "unit-fire_galley",
+  "unique": false,
+  "building": 45
+ },
+ "Dromon": {
+  "line": "Dromon",
+  "icon": "unit-dromon",
+  "unique": false,
+  "building": 45
+ },
+ "Eagle Scout": {
+  "line": "Eagle Scout",
+  "icon": "unit-eagle_scout",
+  "unique": false,
+  "building": 12
+ },
+ "Eagle Warrior": {
+  "line": "Eagle Scout",
+  "icon": "unit-eagle_scout",
+  "unique": false,
+  "building": 12
+ },
+ "Elephant Archer": {
+  "line": "Elephant Archer",
+  "icon": "unit-elephant_archer",
+  "unique": false,
+  "building": 87
+ },
+ "Elite Arambai": {
+  "line": "Arambai",
+  "icon": "unit-arambai",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Ballista Elephant": {
+  "line": "Ballista Elephant",
+  "icon": "unit-ballista_elephant",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Battle Elephant": {
+  "line": "Battle Elephant",
+  "icon": "unit-battle_elephant",
+  "unique": false,
+  "building": 101
+ },
+ "Elite Berserk": {
+  "line": "Berserk",
+  "icon": "unit-berserk",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Blackwood Archer": {
+  "line": "Blackwood Archer",
+  "icon": "unit-blackwood_archer",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Bolas Rider": {
+  "line": "Bolas Rider",
+  "icon": "unit-bolas_rider",
+  "unique": true,
+  "building": 87
+ },
+ "Elite Boyar": {
+  "line": "Boyar",
+  "icon": "unit-boyar",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Camel Archer": {
+  "line": "Camel Archer",
+  "icon": "unit-camel_archer",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Cannon Galleon": {
+  "line": "Cannon Galleon",
+  "icon": "unit-cannon_galleon",
+  "unique": false,
+  "building": 45
+ },
+ "Elite Caravel": {
+  "line": "Caravel",
+  "icon": "unit-caravel",
+  "unique": true,
+  "building": 45
+ },
+ "Elite Cataphract": {
+  "line": "Cataphract",
+  "icon": "unit-cataphract",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Centurion": {
+  "line": "Centurion",
+  "icon": "unit-centurion",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Chakram Thrower": {
+  "line": "Chakram Thrower",
+  "icon": "unit-chakram_thrower",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Champi Warrior": {
+  "line": "Champi Scout",
+  "icon": "unit-champi_scout",
+  "unique": false,
+  "building": 12
+ },
+ "Elite Chu Ko Nu": {
+  "line": "Chu Ko Nu",
+  "icon": "unit-chu_ko_nu",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Composite Bowman": {
+  "line": "Composite Bowman",
+  "icon": "unit-composite_bowman",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Conquistador": {
+  "line": "Conquistador",
+  "icon": "unit-conquistador",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Coustillier": {
+  "line": "Coustillier",
+  "icon": "unit-coustillier",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Eagle Warrior": {
+  "line": "Eagle Scout",
+  "icon": "unit-eagle_scout",
+  "unique": false,
+  "building": 12
+ },
+ "Elite Elephant Archer": {
+  "line": "Elephant Archer",
+  "icon": "unit-elephant_archer",
+  "unique": false,
+  "building": 87
+ },
+ "Elite Fire Archer": {
+  "line": "Fire Archer",
+  "icon": "unit-fire_archer",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Fire Lancer": {
+  "line": "Fire Lancer",
+  "icon": "unit-fire_lancer",
+  "unique": false,
+  "building": 12
+ },
+ "Elite Gbeto": {
+  "line": "Gbeto",
+  "icon": "unit-gbeto",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Genitour": {
+  "line": "Genitour",
+  "icon": "unit-genitour",
+  "unique": true,
+  "building": 87
+ },
+ "Elite Genoese Crossbowman": {
+  "line": "Genoese Crossbowman",
+  "icon": "unit-genoese_crossbowman",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Ghulam": {
+  "line": "Ghulam",
+  "icon": "unit-ghulam",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Guecha Warrior": {
+  "line": "Guecha Warrior",
+  "icon": "unit-guecha_warrior",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Hearth Troop": {
+  "line": "Hearth Troop",
+  "icon": "unit-hearth_troop",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Huskarl": {
+  "line": "Huskarl",
+  "icon": "unit-huskarl",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Hussite Wagon": {
+  "line": "Hussite Wagon",
+  "icon": "unit-hussite_wagon",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Ibirapema Warrior": {
+  "line": "Ibirapema Warrior",
+  "icon": "unit-ibirapema_warrior",
+  "unique": true,
+  "building": 12
+ },
+ "Elite Iron Pagoda": {
+  "line": "Iron Pagoda",
+  "icon": "unit-iron_pagoda",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Jaguar Warrior": {
+  "line": "Jaguar Warrior",
+  "icon": "unit-jaguar_warrior",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Janissary": {
+  "line": "Janissary",
+  "icon": "unit-janissary",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Jarl": {
+  "line": "Jarl",
+  "icon": "unit-jarl",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Jomsviking": {
+  "line": "Jomsviking",
+  "icon": "unit-jomsviking",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Kamayuk": {
+  "line": "Kamayuk",
+  "icon": "unit-kamayuk",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Karambit Warrior": {
+  "line": "Karambit Warrior",
+  "icon": "unit-karambit_warrior",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Keshik": {
+  "line": "Keshik",
+  "icon": "unit-keshik",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Kipchak": {
+  "line": "Elite Kipchak",
+  "icon": "unit-elite_kipchak",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Kona": {
+  "line": "Kona",
+  "icon": "unit-kona",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Konnik": {
+  "line": "Konnik",
+  "icon": "unit-konnik",
+  "unique": true,
+  "building": 1251
+ },
+ "Elite Leitis": {
+  "line": "Leitis",
+  "icon": "unit-leitis",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Liao Dao": {
+  "line": "Liao Dao",
+  "icon": "unit-liao_dao",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Longbowman": {
+  "line": "Longbowman",
+  "icon": "unit-longbowman",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Longship": {
+  "line": "Longship",
+  "icon": "unit-longship",
+  "unique": false,
+  "building": 45
+ },
+ "Elite Magyar Huszar": {
+  "line": "Magyar Huszar",
+  "icon": "unit-magyar_huszar",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Mameluke": {
+  "line": "Mameluke",
+  "icon": "unit-mameluke",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Mangudai": {
+  "line": "Mangudai",
+  "icon": "unit-mangudai",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Monaspa": {
+  "line": "Monaspa",
+  "icon": "unit-monaspa",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Obuch": {
+  "line": "Obuch",
+  "icon": "unit-obuch",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Organ Gun": {
+  "line": "Organ Gun",
+  "icon": "unit-organ_gun",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Plumed Archer": {
+  "line": "Plumed Archer",
+  "icon": "unit-plumed_archer",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Ratha": {
+  "line": "Ratha",
+  "icon": "unit-ratha",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Rattan Archer": {
+  "line": "Rattan Archer",
+  "icon": "unit-rattan_archer",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Samurai": {
+  "line": "Samurai",
+  "icon": "unit-samurai",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Serjeant": {
+  "line": "Serjeant",
+  "icon": "unit-serjeant",
+  "unique": true,
+  "building": 1665
+ },
+ "Elite Shotel Warrior": {
+  "line": "Shotel Warrior",
+  "icon": "unit-shotel_warrior",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Shrivamsha Rider": {
+  "line": "Shrivamsha Rider",
+  "icon": "unit-shrivamsha_rider",
+  "unique": true,
+  "building": 101
+ },
+ "Elite Skirmisher": {
+  "line": "Skirmisher",
+  "icon": "unit-skirmisher",
+  "unique": false,
+  "building": 87
+ },
+ "Elite Steppe Lancer": {
+  "line": "Steppe Lancer",
+  "icon": "unit-steppe_lancer",
+  "unique": false,
+  "building": 101
+ },
+ "Elite Tarkan": {
+  "line": "Tarkan",
+  "icon": "unit-tarkan",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Temple Guard": {
+  "line": "Temple Guard",
+  "icon": "unit-temple_guard",
+  "unique": true,
+  "building": 12
+ },
+ "Elite Teutonic Knight": {
+  "line": "Teutonic Knight",
+  "icon": "unit-teutonic_knight",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Throwing Axeman": {
+  "line": "Throwing Axeman",
+  "icon": "unit-throwing_axeman",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Tiger Cavalry": {
+  "line": "Tiger Cavalry",
+  "icon": "unit-tiger_cavalry",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Turtle Ship": {
+  "line": "Turtle Ship",
+  "icon": "unit-turtle_ship",
+  "unique": true,
+  "building": 45
+ },
+ "Elite Urumi Swordsman": {
+  "line": "Urumi Swordsman",
+  "icon": "unit-urumi_swordsman",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Varangian Guard": {
+  "line": "Varangian Guard",
+  "icon": "unit-varangian_guard",
+  "unique": false,
+  "building": 12
+ },
+ "Elite War Elephant": {
+  "line": "War Elephant",
+  "icon": "unit-war_elephant",
+  "unique": true,
+  "building": 82
+ },
+ "Elite War Wagon": {
+  "line": "War Wagon",
+  "icon": "unit-war_wagon",
+  "unique": true,
+  "building": 82
+ },
+ "Elite White Feather Guard": {
+  "line": "White Feather Guard",
+  "icon": "unit-white_feather_guard",
+  "unique": true,
+  "building": 82
+ },
+ "Elite Woad Raider": {
+  "line": "Woad Raider",
+  "icon": "unit-woad_raider",
+  "unique": true,
+  "building": 82
+ },
+ "Fast Fire Ship": {
+  "line": "Fire Galley",
+  "icon": "unit-fire_galley",
+  "unique": false,
+  "building": 45
+ },
+ "Fire Archer": {
+  "line": "Fire Archer",
+  "icon": "unit-fire_archer",
+  "unique": true,
+  "building": 82
+ },
+ "Fire Galley": {
+  "line": "Fire Galley",
+  "icon": "unit-fire_galley",
+  "unique": false,
+  "building": 45
+ },
+ "Fire Lancer": {
+  "line": "Fire Lancer",
+  "icon": "unit-fire_lancer",
+  "unique": false,
+  "building": 12
+ },
+ "Fire Ship": {
+  "line": "Fire Galley",
+  "icon": "unit-fire_galley",
+  "unique": false,
+  "building": 45
+ },
+ "Fishing Ship": {
+  "line": "Fishing Ship",
+  "icon": "unit-fishing_ship",
+  "unique": false,
+  "building": 45
+ },
+ "Flaming Camel": {
+  "line": "Flaming Camel",
+  "icon": "unit-flaming_camel",
+  "unique": true,
+  "building": 49
+ },
+ "Flemish Militia": {
+  "line": "Flemish Militia",
+  "icon": "unit-flemish_militia",
+  "unique": true,
+  "building": 12
+ },
+ "Galleon": {
+  "line": "Galley",
+  "icon": "unit-galley",
+  "unique": false,
+  "building": 45
+ },
+ "Galley": {
+  "line": "Galley",
+  "icon": "unit-galley",
+  "unique": false,
+  "building": 45
+ },
+ "Gbeto": {
+  "line": "Gbeto",
+  "icon": "unit-gbeto",
+  "unique": true,
+  "building": 82
+ },
+ "Genitour": {
+  "line": "Genitour",
+  "icon": "unit-genitour",
+  "unique": true,
+  "building": 87
+ },
+ "Genoese Crossbowman": {
+  "line": "Genoese Crossbowman",
+  "icon": "unit-genoese_crossbowman",
+  "unique": true,
+  "building": 82
+ },
+ "Ghulam": {
+  "line": "Ghulam",
+  "icon": "unit-ghulam",
+  "unique": true,
+  "building": 82
+ },
+ "Grenadier": {
+  "line": "Grenadier",
+  "icon": "unit-grenadier",
+  "unique": true,
+  "building": 87
+ },
+ "Guecha Warrior": {
+  "line": "Guecha Warrior",
+  "icon": "unit-guecha_warrior",
+  "unique": true,
+  "building": 82
+ },
+ "Halberdier": {
+  "line": "Spearman",
+  "icon": "unit-spearman",
+  "unique": false,
+  "building": 1665
+ },
+ "Hand Cannoneer": {
+  "line": "Hand Cannoneer",
+  "icon": "unit-hand_cannoneer",
+  "unique": false,
+  "building": 87
+ },
+ "Hearth Troop": {
+  "line": "Hearth Troop",
+  "icon": "unit-hearth_troop",
+  "unique": true,
+  "building": 82
+ },
+ "Heavy Camel Rider": {
+  "line": "Camel Rider",
+  "icon": "unit-camel",
+  "unique": false,
+  "building": 101
+ },
+ "Heavy Cavalry Archer": {
+  "line": "Cavalry Archer",
+  "icon": "unit-cavalry_archer",
+  "unique": false,
+  "building": 87
+ },
+ "Heavy Demolition Ship": {
+  "line": "Demolition Raft",
+  "icon": "unit-demolition_raft",
+  "unique": false,
+  "building": 45
+ },
+ "Heavy Hei Guang Cavalry": {
+  "line": "Hei Guang Cavalry",
+  "icon": "unit-hei_guang_cavalry",
+  "unique": false,
+  "building": 101
+ },
+ "Heavy Mounted Crossbowman": {
+  "line": "Mounted Crossbowman",
+  "icon": "unit-mounted_crossbowman",
+  "unique": false,
+  "building": 87
+ },
+ "Heavy Rocket Cart": {
+  "line": "Rocket Cart",
+  "icon": "unit-rocket_cart",
+  "unique": false,
+  "building": 49
+ },
+ "Heavy Scorpion": {
+  "line": "Scorpion",
+  "icon": "unit-scorpion",
+  "unique": false,
+  "building": 49
+ },
+ "Hei Guang Cavalry": {
+  "line": "Hei Guang Cavalry",
+  "icon": "unit-hei_guang_cavalry",
+  "unique": false,
+  "building": 101
+ },
+ "Houfnice": {
+  "line": "Bombard Cannon",
+  "icon": "unit-bombard_cannon",
+  "unique": false,
+  "building": 49
+ },
+ "Hulk": {
+  "line": "Hulk",
+  "icon": "unit-hulk",
+  "unique": false,
+  "building": 45
+ },
+ "Huskarl": {
+  "line": "Huskarl",
+  "icon": "unit-huskarl",
+  "unique": true,
+  "building": 82
+ },
+ "Hussar": {
+  "line": "Scout Cavalry",
+  "icon": "unit-scout",
+  "unique": false,
+  "building": 101
+ },
+ "Hussite Wagon": {
+  "line": "Hussite Wagon",
+  "icon": "unit-hussite_wagon",
+  "unique": true,
+  "building": 82
+ },
+ "Ibirapema Warrior": {
+  "line": "Ibirapema Warrior",
+  "icon": "unit-ibirapema_warrior",
+  "unique": true,
+  "building": 12
+ },
+ "Imperial Camel Rider": {
+  "line": "Camel Rider",
+  "icon": "unit-camel",
+  "unique": false,
+  "building": 101
+ },
+ "Imperial Skirmisher": {
+  "line": "Skirmisher",
+  "icon": "unit-skirmisher",
+  "unique": false,
+  "building": 87
+ },
+ "Iron Pagoda": {
+  "line": "Iron Pagoda",
+  "icon": "unit-iron_pagoda",
+  "unique": true,
+  "building": 82
+ },
+ "Jaguar Warrior": {
+  "line": "Jaguar Warrior",
+  "icon": "unit-jaguar_warrior",
+  "unique": true,
+  "building": 82
+ },
+ "Janissary": {
+  "line": "Janissary",
+  "icon": "unit-janissary",
+  "unique": true,
+  "building": 82
+ },
+ "Jarl": {
+  "line": "Jarl",
+  "icon": "unit-jarl",
+  "unique": true,
+  "building": 82
+ },
+ "Jian Swordsman": {
+  "line": "Jian Swordsman",
+  "icon": "unit-jian_swordsman",
+  "unique": true,
+  "building": 12
+ },
+ "Jomsviking": {
+  "line": "Jomsviking",
+  "icon": "unit-jomsviking",
+  "unique": true,
+  "building": 82
+ },
+ "Kamayuk": {
+  "line": "Kamayuk",
+  "icon": "unit-kamayuk",
+  "unique": true,
+  "building": 82
+ },
+ "Karambit Warrior": {
+  "line": "Karambit Warrior",
+  "icon": "unit-karambit_warrior",
+  "unique": true,
+  "building": 82
+ },
+ "Keshik": {
+  "line": "Keshik",
+  "icon": "unit-keshik",
+  "unique": true,
+  "building": 82
+ },
+ "Kipchak": {
+  "line": "Kipchak",
+  "icon": "unit-kipchak",
+  "unique": true,
+  "building": 82
+ },
+ "Knight": {
+  "line": "Knight",
+  "icon": "unit-knight",
+  "unique": false,
+  "building": 101
+ },
+ "Kona": {
+  "line": "Kona",
+  "icon": "unit-kona",
+  "unique": true,
+  "building": 82
+ },
+ "Konnik": {
+  "line": "Konnik",
+  "icon": "unit-konnik",
+  "unique": true,
+  "building": 1251
+ },
+ "Legionary": {
+  "line": "Militia",
+  "icon": "unit-militia",
+  "unique": false,
+  "building": 12
+ },
+ "Leitis": {
+  "line": "Leitis",
+  "icon": "unit-leitis",
+  "unique": true,
+  "building": 82
+ },
+ "Liao Dao": {
+  "line": "Liao Dao",
+  "icon": "unit-liao_dao",
+  "unique": true,
+  "building": 82
+ },
+ "Light Cavalry": {
+  "line": "Scout Cavalry",
+  "icon": "unit-scout",
+  "unique": false,
+  "building": 101
+ },
+ "Liu Bei": {
+  "line": "Liu Bei",
+  "icon": "unit-liu_bei",
+  "unique": true,
+  "building": 82
+ },
+ "Long Swordsman": {
+  "line": "Militia",
+  "icon": "unit-militia",
+  "unique": false,
+  "building": 12
+ },
+ "Longbowman": {
+  "line": "Longbowman",
+  "icon": "unit-longbowman",
+  "unique": true,
+  "building": 82
+ },
+ "Longship": {
+  "line": "Longship",
+  "icon": "unit-longship",
+  "unique": false,
+  "building": 45
+ },
+ "Lou Chuan": {
+  "line": "Lou Chuan",
+  "icon": "unit-lou_chuan",
+  "unique": false,
+  "building": 45
+ },
+ "Magyar Huszar": {
+  "line": "Magyar Huszar",
+  "icon": "unit-magyar_huszar",
+  "unique": true,
+  "building": 82
+ },
+ "Mameluke": {
+  "line": "Mameluke",
+  "icon": "unit-mameluke",
+  "unique": true,
+  "building": 82
+ },
+ "Man-at-Arms": {
+  "line": "Militia",
+  "icon": "unit-militia",
+  "unique": false,
+  "building": 12
+ },
+ "Mangonel": {
+  "line": "Mangonel",
+  "icon": "unit-mangonel",
+  "unique": false,
+  "building": 49
+ },
+ "Mangudai": {
+  "line": "Mangudai",
+  "icon": "unit-mangudai",
+  "unique": true,
+  "building": 82
+ },
+ "Militia": {
+  "line": "Militia",
+  "icon": "unit-militia",
+  "unique": false,
+  "building": 12
+ },
+ "Missionary": {
+  "line": "Missionary",
+  "icon": "unit-missionary",
+  "unique": true,
+  "building": 104
+ },
+ "Monaspa": {
+  "line": "Monaspa",
+  "icon": "unit-monaspa",
+  "unique": true,
+  "building": 82
+ },
+ "Monk": {
+  "line": "Monk",
+  "icon": "unit-monk",
+  "unique": false,
+  "building": 1806
+ },
+ "Mounted Crossbowman": {
+  "line": "Mounted Crossbowman",
+  "icon": "unit-mounted_crossbowman",
+  "unique": false,
+  "building": 87
+ },
+ "Mounted Trebuchet": {
+  "line": "Mounted Trebuchet",
+  "icon": "unit-mounted_trebuchet",
+  "unique": true,
+  "building": 49
+ },
+ "Obuch": {
+  "line": "Obuch",
+  "icon": "unit-obuch",
+  "unique": true,
+  "building": 82
+ },
+ "Onager": {
+  "line": "Mangonel",
+  "icon": "unit-mangonel",
+  "unique": false,
+  "building": 49
+ },
+ "Organ Gun": {
+  "line": "Organ Gun",
+  "icon": "unit-organ_gun",
+  "unique": true,
+  "building": 82
+ },
+ "Paladin": {
+  "line": "Knight",
+  "icon": "unit-knight",
+  "unique": false,
+  "building": 101
+ },
+ "Petard": {
+  "line": "Petard",
+  "icon": "unit-petard",
+  "unique": false,
+  "building": 82
+ },
+ "Pikeman": {
+  "line": "Spearman",
+  "icon": "unit-spearman",
+  "unique": false,
+  "building": 1665
+ },
+ "Plumed Archer": {
+  "line": "Plumed Archer",
+  "icon": "unit-plumed_archer",
+  "unique": true,
+  "building": 82
+ },
+ "Ratha": {
+  "line": "Ratha",
+  "icon": "unit-ratha",
+  "unique": true,
+  "building": 82
+ },
+ "Rattan Archer": {
+  "line": "Rattan Archer",
+  "icon": "unit-rattan_archer",
+  "unique": true,
+  "building": 82
+ },
+ "Rocket Cart": {
+  "line": "Rocket Cart",
+  "icon": "unit-rocket_cart",
+  "unique": false,
+  "building": 49
+ },
+ "Samurai": {
+  "line": "Samurai",
+  "icon": "unit-samurai",
+  "unique": true,
+  "building": 82
+ },
+ "Savar": {
+  "line": "Knight",
+  "icon": "unit-knight",
+  "unique": false,
+  "building": 101
+ },
+ "Scorpion": {
+  "line": "Scorpion",
+  "icon": "unit-scorpion",
+  "unique": false,
+  "building": 49
+ },
+ "Scout Cavalry": {
+  "line": "Scout Cavalry",
+  "icon": "unit-scout",
+  "unique": false,
+  "building": 101
+ },
+ "Serjeant": {
+  "line": "Serjeant",
+  "icon": "unit-serjeant",
+  "unique": true,
+  "building": 1665
+ },
+ "Shotel Warrior": {
+  "line": "Shotel Warrior",
+  "icon": "unit-shotel_warrior",
+  "unique": true,
+  "building": 82
+ },
+ "Shrivamsha Rider": {
+  "line": "Shrivamsha Rider",
+  "icon": "unit-shrivamsha_rider",
+  "unique": true,
+  "building": 101
+ },
+ "Siege Elephant": {
+  "line": "Armored Elephant",
+  "icon": "unit-armored_elephant",
+  "unique": false,
+  "building": 49
+ },
+ "Siege Onager": {
+  "line": "Mangonel",
+  "icon": "unit-mangonel",
+  "unique": false,
+  "building": 49
+ },
+ "Siege Ram": {
+  "line": "Battering Ram",
+  "icon": "unit-battering_ram",
+  "unique": false,
+  "building": 49
+ },
+ "Siege Tower": {
+  "line": "Siege Tower",
+  "icon": "unit-siege_tower",
+  "unique": false,
+  "building": 49
+ },
+ "Skirmisher": {
+  "line": "Skirmisher",
+  "icon": "unit-skirmisher",
+  "unique": false,
+  "building": 87
+ },
+ "Slinger": {
+  "line": "Slinger",
+  "icon": "unit-slinger",
+  "unique": false,
+  "building": 87
+ },
+ "Spearman": {
+  "line": "Spearman",
+  "icon": "unit-spearman",
+  "unique": false,
+  "building": 1665
+ },
+ "Steppe Lancer": {
+  "line": "Steppe Lancer",
+  "icon": "unit-steppe_lancer",
+  "unique": false,
+  "building": 101
+ },
+ "Sun Jian": {
+  "line": "Sun Jian",
+  "icon": "unit-sun_jian",
+  "unique": true,
+  "building": 82
+ },
+ "Tarkan": {
+  "line": "Tarkan",
+  "icon": "unit-tarkan",
+  "unique": true,
+  "building": 82
+ },
+ "Temple Guard": {
+  "line": "Temple Guard",
+  "icon": "unit-temple_guard",
+  "unique": true,
+  "building": 12
+ },
+ "Teutonic Knight": {
+  "line": "Teutonic Knight",
+  "icon": "unit-teutonic_knight",
+  "unique": true,
+  "building": 82
+ },
+ "Thirisadai": {
+  "line": "Thirisadai",
+  "icon": "unit-thirisadai",
+  "unique": true,
+  "building": 45
+ },
+ "Throwing Axeman": {
+  "line": "Throwing Axeman",
+  "icon": "unit-throwing_axeman",
+  "unique": true,
+  "building": 82
+ },
+ "Tiger Cavalry": {
+  "line": "Tiger Cavalry",
+  "icon": "unit-tiger_cavalry",
+  "unique": true,
+  "building": 82
+ },
+ "Traction Trebuchet": {
+  "line": "Traction Trebuchet",
+  "icon": "unit-traction_trebuchet",
+  "unique": false,
+  "building": 49
+ },
+ "Trade Cart": {
+  "line": "Trade Cart",
+  "icon": "unit-trade_cart",
+  "unique": false,
+  "building": 84
+ },
+ "Trade Cog": {
+  "line": "Trade Cog",
+  "icon": "unit-trade_cog",
+  "unique": false,
+  "building": 45
+ },
+ "Transport Ship": {
+  "line": "Transport Ship",
+  "icon": "unit-transport_ship",
+  "unique": false,
+  "building": 45
+ },
+ "Trebuchet": {
+  "line": "Trebuchet (Packed)",
+  "icon": "unit-trebuchet_packed",
+  "unique": false,
+  "building": 82
+ },
+ "Trebuchet (Packed)": {
+  "line": "Trebuchet (Packed)",
+  "icon": "unit-trebuchet_packed",
+  "unique": false,
+  "building": 82
+ },
+ "Turtle Ship": {
+  "line": "Turtle Ship",
+  "icon": "unit-turtle_ship",
+  "unique": true,
+  "building": 45
+ },
+ "Two-Handed Swordsman": {
+  "line": "Militia",
+  "icon": "unit-militia",
+  "unique": false,
+  "building": 12
+ },
+ "Urumi Swordsman": {
+  "line": "Urumi Swordsman",
+  "icon": "unit-urumi_swordsman",
+  "unique": true,
+  "building": 82
+ },
+ "Varangian Guard": {
+  "line": "Varangian Guard",
+  "icon": "unit-varangian_guard",
+  "unique": false,
+  "building": 12
+ },
+ "Villager": {
+  "line": "Villager",
+  "icon": "unit-villager",
+  "unique": false,
+  "building": 109
+ },
+ "War Chariot": {
+  "line": "War Chariot",
+  "icon": "unit-war_chariot",
+  "unique": true,
+  "building": 49
+ },
+ "War Elephant": {
+  "line": "War Elephant",
+  "icon": "unit-war_elephant",
+  "unique": true,
+  "building": 82
+ },
+ "War Galley": {
+  "line": "Galley",
+  "icon": "unit-galley",
+  "unique": false,
+  "building": 45
+ },
+ "War Hulk": {
+  "line": "Hulk",
+  "icon": "unit-hulk",
+  "unique": false,
+  "building": 45
+ },
+ "War Wagon": {
+  "line": "War Wagon",
+  "icon": "unit-war_wagon",
+  "unique": true,
+  "building": 82
+ },
+ "Warrior Priest": {
+  "line": "Warrior Priest",
+  "icon": "unit-warrior_priest",
+  "unique": true,
+  "building": 1806
+ },
+ "White Feather Guard": {
+  "line": "White Feather Guard",
+  "icon": "unit-white_feather_guard",
+  "unique": true,
+  "building": 82
+ },
+ "Winged Hussar": {
+  "line": "Scout Cavalry",
+  "icon": "unit-scout",
+  "unique": false,
+  "building": 101
+ },
+ "Woad Raider": {
+  "line": "Woad Raider",
+  "icon": "unit-woad_raider",
+  "unique": true,
+  "building": 82
+ },
+ "Xianbei Raider": {
+  "line": "Xianbei Raider",
+  "icon": "unit-xianbei_raider",
+  "unique": true,
+  "building": 87
+ }
+}

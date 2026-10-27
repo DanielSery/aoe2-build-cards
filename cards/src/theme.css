@@ -1,0 +1,288 @@
+/* Two themes in one file, and they are deliberately opposite.
+ *
+ * The app chrome is dark so it recedes; the card is a printed page and stays
+ * light whatever the chrome does, because the card is what leaves the app. Any
+ * rule under `.card` is part of the exported image. */
+
+:root {
+  --chrome: #15161a;
+  --chrome-2: #1b1c21;
+  --chrome-3: #22242b;
+  --line: #2f313a;
+  --ink: #e6e7ea;
+  --ink-dim: #9ea2ad;
+  --accent: #5b8def;
+  --danger: #e0645c;
+  font-family: "Segoe UI", Inter, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Pseudo-elements too: the empty-place placeholders are `::after`, and four
+ * pixels of border on them is four pixels of row height a finished row does
+ * not have. */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--chrome);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--chrome-3);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+button { cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button.danger:hover { border-color: var(--danger); color: var(--danger); }
+button.tiny { padding: 2px 7px; font-size: 12px; }
+
+/* ---------------------------------------------------------------- chrome */
+
+.app { height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+
+.topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px; border-bottom: 1px solid var(--line); background: var(--chrome-2);
+}
+.topbar .brand { font-weight: 800; letter-spacing: -0.2px; margin-right: 4px; }
+.topbar .spacer { flex: 1; }
+.topbar input[type="text"] { min-width: 220px; }
+
+.body { display: grid; grid-template-columns: 296px 1fr 336px; min-height: 0; }
+.pane { min-height: 0; overflow: auto; padding: 12px; }
+.pane.palette { border-right: 1px solid var(--line); }
+.pane.inspector { border-left: 1px solid var(--line); }
+.pane.canvas { background: var(--chrome-2); display: block; padding: 24px; }
+.canvas-inner { width: max-content; margin: 0 auto; }
+.export-copy { position: fixed; top: 0; left: -20000px; pointer-events: none; }
+
+h2.section { font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+             color: var(--ink-dim); margin: 16px 0 8px; }
+h2.section:first-child { margin-top: 0; }
+
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+          margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.crumbs .sep { color: var(--ink-dim); margin: 0 2px; }
+.crumb { background: none; border: 0; padding: 2px 4px; font-size: 12px;
+         color: var(--ink-dim); border-radius: 4px; }
+.crumb:hover { color: var(--ink); }
+.crumb.on { color: var(--ink); font-weight: 700; }
+
+.menu-anchor { position: relative; }
+.menu-backdrop { position: fixed; inset: 0; z-index: 20; }
+.menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 21; min-width: 190px;
+        display: flex; flex-direction: column; padding: 4px; gap: 2px;
+        background: var(--chrome-2); border: 1px solid var(--line); border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.menu button { display: flex; justify-content: space-between; gap: 12px; text-align: left;
+               background: none; border: 0; }
+.menu button:hover { background: var(--line); }
+.menu small { color: var(--ink-dim); }
+
+.zoom { display: flex; gap: 2px; margin-right: 6px; }
+.zoom button { padding: 6px 9px; }
+.zoom .level { min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; }
+
+.row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.row.tight { gap: 4px; }
+.grow { flex: 1; min-width: 0; }
+.hint { color: var(--ink-dim); font-size: 12px; line-height: 1.5; }
+label.field { display: block; font-size: 12px; color: var(--ink-dim); margin: 8px 0 3px; }
+input.wide, select.wide, textarea.wide { width: 100%; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { padding: 3px 9px; font-size: 12px; border-radius: 999px;
+        background: var(--chrome-3); border: 1px solid var(--line); cursor: pointer; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.palette-target { margin: 0 0 8px; padding: 6px 9px; font-size: 12px; border-radius: 6px;
+                  background: rgba(91, 141, 239, 0.16); border: 1px solid var(--accent);
+                  color: var(--ink); }
+
+.number-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 5px; }
+.number-btn { padding: 5px 0; font-weight: 800; font-variant-numeric: tabular-nums;
+              background: var(--chrome-3); border: 1px solid var(--line); border-radius: 5px; }
+.number-btn:active { cursor: grabbing; }
+
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 6px; }
+.icon-btn { padding: 0; aspect-ratio: 1; background: #000; border: 2px solid var(--line);
+            border-radius: 5px; overflow: hidden; }
+.icon-btn img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.icon-btn.small { width: 38px; height: 38px; flex: none; }
+.icon-btn.on { border-color: var(--accent); }
+.icon-btn .glyph { display: grid; place-items: center; width: 100%; height: 100%;
+                   font-size: 17px; color: var(--ink); background: var(--chrome-3); }
+
+.slot-block { margin-top: 8px; padding: 8px 9px; border: 1px solid var(--line);
+              border-radius: 8px; background: var(--chrome-3); cursor: pointer; }
+.slot-block.on { border-color: var(--accent); background: rgba(91, 141, 239, 0.1); }
+.slot-block strong { font-size: 13px; }
+
+.cards-list { display: flex; flex-direction: column; gap: 4px; }
+.cards-list .entry { display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+                     border: 1px solid var(--line); border-radius: 6px; background: var(--chrome-3); }
+.cards-list .entry.on { border-color: var(--accent); }
+.cards-list .entry .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+                           white-space: nowrap; cursor: pointer; }
+
+.crash { max-width: 640px; margin: 12vh auto; padding: 24px; }
+.crash h1 { font-size: 22px; margin: 0 0 8px; }
+
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+                  display: grid; place-items: center; z-index: 10; }
+.modal { background: var(--chrome-2); border: 1px solid var(--line); border-radius: 10px;
+         padding: 16px; width: 480px; max-height: 80vh; overflow: auto; }
+
+.modal.wide { width: 680px; }
+.unsaved { font-size: 12px; color: var(--ink-dim); border: 1px dashed var(--line);
+           border-radius: 999px; padding: 3px 9px; }
+
+.game { margin-top: 12px; }
+.game-team { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.game-player { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; }
+.game-player .who { display: flex; flex-direction: column; min-width: 0; }
+.game-player .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-player .strategy { font-size: 12px; color: var(--ink-dim); }
+.game-player .swatch { flex: none; width: 12px; height: 12px; border-radius: 3px; }
+.game-player .ages { font-variant-numeric: tabular-nums; }
+.game-player.on { border-color: var(--accent); }
+.finder-list { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
+.found-game { display: grid; grid-template-columns: 112px 1fr 40px 52px 1fr 18px; gap: 8px;
+              align-items: center; width: 100%; text-align: left; padding: 5px 10px; }
+.found-game .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.found-game .won { color: #6fcf8a; font-weight: 700; }
+.found-game .plan { grid-column: 2 / -1; font-size: 12px; color: var(--ink-dim); }
+.found-game .plan.failed { font-style: italic; }
+.found-game .lost { color: var(--danger); font-weight: 700; }
+.game-error { color: var(--danger); font-size: 13px; line-height: 1.5; margin: 8px 0 0; }
+
+/* ------------------------------------------------------------------ card */
+
+.card {
+  width: 1040px;
+  background: #c9ccd1;
+  border: 5px solid #111318;
+  border-radius: 9px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: #111318;
+}
+
+.card-head {
+  background: #eceef0; border: 4px solid #111318; border-radius: 6px;
+  padding: 14px 20px 18px; text-align: center;
+}
+.card-head h1 { margin: 0; font-size: 62px; font-weight: 900; line-height: 1; letter-spacing: -1px; }
+.card-head p { margin: 8px 0 0; font-size: 34px; font-weight: 800; line-height: 1; }
+
+.phase { border: 4px solid #111318; border-radius: 6px; padding: 12px 14px 14px; }
+.phase--dark { background: #fbe8a0; --band: #6b6134; }
+.phase--transition { background: #dfe2e6; --band: #2c3a4e; }
+.phase--feudal { background: #e9a9a9; --band: #6f2626; }
+.phase--castle { background: #d2c0ea; --band: #452c66; }
+.phase--imperial { background: #aedcd8; --band: #1d5c5c; }
+.phase--neutral { background: #eceef0; --band: #2a2a2a; }
+
+.phase-label {
+  display: inline-block; background: var(--band); color: #fff;
+  font-size: 25px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 7px 18px; border-radius: 7px; margin-bottom: 8px;
+}
+
+.phase-steps { display: flex; flex-direction: column; }
+/* The headroom is for icon captions, which sit above their tile and out of
+ * flow so that a row with one still lines up with the rows without. */
+.step { display: flex; align-items: center; gap: 14px; padding: 16px 2px 10px;
+        border-top: 2px solid rgba(0, 0, 0, 0.15); }
+.step:first-child { border-top: 0; }
+
+.step-no { flex: none; width: 52px; height: 52px; border-radius: 50%;
+           background: #1d2733; color: #fff; font-size: 27px; font-weight: 900;
+           display: grid; place-items: center; }
+
+.countbox { min-width: 64px; height: 64px; padding: 0 9px; background: #f8f6f0;
+            border: 3px solid #111318; border-radius: 6px; line-height: 1;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.countbox b { font-size: 33px; font-weight: 900; }
+.countbox i { font-size: 14px; font-weight: 800; font-style: normal;
+              color: #5c6068; margin-top: 3px; }
+.countbox--word { border-color: #b4b7bd; }
+.countbox--word b { font-size: 20px; font-weight: 700; color: #5c6068; }
+
+/* No wrapping. A chain that can wrap lays out differently in a clone than it
+ * does on screen, and the export is a clone. */
+.chain { display: flex; align-items: center; gap: 12px; }
+.link { display: flex; align-items: center; gap: 12px; }
+.slot { display: flex; align-items: center; gap: 10px; }
+.extras { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+.item { display: inline-flex; align-items: center; position: relative; }
+.tile { width: 64px; height: 64px; border: 3px solid #111318; border-radius: 5px;
+        background: #000; overflow: hidden; display: block; }
+/* `contain`, not `cover`: the art is not all square — a cropped deer loses its
+ * antlers, which is most of what says "deer" at 64px. */
+.tile img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* Out of flow on purpose: a caption changes nothing about where its tile sits,
+ * so a row that has one still lines up with the rows that do not. */
+.cap { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+       font-size: 19px; font-weight: 900; line-height: 1; white-space: nowrap;
+       pointer-events: none; text-shadow: 0 0 3px rgba(255, 255, 255, 0.9); }
+.arrow { font-size: 40px; font-weight: 900; line-height: 1; }
+.phrase { font-size: 26px; font-weight: 800; white-space: pre-wrap; }
+.boxed { display: inline-flex; align-items: center; gap: 10px; padding: 7px 11px;
+         border: 2px solid #111318; border-radius: 9px; background: rgba(255, 255, 255, 0.34); }
+.boxed-empty { font-size: 14px; font-weight: 700; color: #555; padding: 20px 6px; }
+
+/* Editing affordances. Everything here is scoped to `.card--edit`, so the
+ * export — which renders without it — carries none of them. */
+.card--edit .phase, .card--edit .step, .card--edit .item,
+.card--edit .slot, .card--edit .extras { cursor: pointer; }
+.card--edit .item[draggable="true"] { cursor: grab; }
+.card--edit .slot, .card--edit .extras { min-height: 64px; border-radius: 7px; padding: 0 3px; }
+
+/* An empty place names itself, because the three places are the format and
+ * nothing else on the card explains them. */
+.card--edit .slot:empty::after, .card--edit .extras:empty::after {
+  content: attr(data-hint);
+  display: flex; align-items: center; height: 64px; padding: 0 12px;
+  font-size: 14px; font-weight: 700; white-space: nowrap;
+  color: rgba(0, 0, 0, 0.45); border: 2px dashed rgba(0, 0, 0, 0.24); border-radius: 7px;
+}
+.card--edit .link .arrow { opacity: 0.45; }
+.card--edit .is-selected { outline: 3px solid #1f6feb; outline-offset: 2px; border-radius: 7px; }
+.card--edit .is-over { outline: 3px dashed #1f6feb; outline-offset: 3px; border-radius: 7px; }
+
+/* Where it will land. Drawn on the edge the pointer is nearer, in the gap
+ * beside the tile rather than over it, so the thing being aimed at stays
+ * visible. */
+.card--edit .item[data-drop]::after {
+  content: ""; position: absolute; top: -5px; bottom: -5px; width: 4px;
+  background: #1f6feb; border-radius: 2px; z-index: 2;
+}
+.card--edit .item[data-drop="before"]::after { left: -7px; }
+.card--edit .item[data-drop="after"]::after { right: -7px; }
+
+/* One click to add a row, on the card rather than off in a panel. Rendered
+ * only while editing, so it is never in the PNG. */
+.add-row {
+  margin-top: 6px; padding: 7px 0; width: 100%;
+  background: rgba(255, 255, 255, 0.25); border: 2px dashed rgba(0, 0, 0, 0.28);
+  border-radius: 7px; color: rgba(0, 0, 0, 0.5);
+  font-size: 15px; font-weight: 800; cursor: pointer;
+}
+.add-row:hover { border-color: #1f6feb; color: #1f6feb; background: rgba(31, 111, 235, 0.08); }
+
+/* The row's drag handle. Rendered only while editing, so it is never in the
+ * PNG and needs no rule to hide it there. */
+.grip { flex: none; width: 20px; margin-right: -8px; cursor: grab;
+        font-size: 19px; line-height: 1; color: rgba(0, 0, 0, 0.35); text-align: center; }
+.grip:active { cursor: grabbing; }

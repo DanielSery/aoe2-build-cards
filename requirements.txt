@@ -1,0 +1,8 @@
+# The replay reader behind "Analyze game…", which also serves the built app.
+fastapi
+uvicorn[standard]
+# replays/mgzfix.py patches this exact release to read current replays.
+mgz==1.8.51
+
+# tools/fetch_card_icons.py only: it trims the straggler icon.
+Pillow

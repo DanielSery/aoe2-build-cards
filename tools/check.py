@@ -1,0 +1,135 @@
+"""The replay reader's offline checks: a link names its match, a strategy reads
+in order, and forward means at the enemy's door.
+
+    python tools/check.py
+
+Reading a real game needs the network and a replay Microsoft still keeps, so
+that is checked by hand (see README.md). The card editor's own test is
+`cards/shot.mjs`.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+
+def check_a_game_link_names_its_match(fail) -> None:
+    """Every link a player pastes into *Analyze game…* finds the match, and a
+    profile link is refused rather than read as one.
+
+    A profile id is a number in a URL too, so "the number in the link" would
+    fetch a match that does not exist and blame the replay server for it.
+    """
+    from replays.fetch import GameError, match_id
+    for link in ("516330082", " 516330082 ",
+                 "https://www.aoe2companion.com/match/516330082",
+                 "https://www.aoe2insights.com/match/516330082/",
+                 "https://aoe.ms/replay/?gameId=516330082&profileId=2463959",
+                 "aoe2de://0/516330082"):
+        try:
+            if match_id(link) != 516330082:
+                fail(f"{link!r} read as match {match_id(link)}")
+        except GameError:
+            fail(f"{link!r} was refused")
+    for link in ("https://www.aoe2companion.com/profile/2463959", "not a link"):
+        try:
+            fail(f"{link!r} read as match {match_id(link)}")
+        except GameError:
+            pass
+
+
+def check_a_strategy_reads_in_order(fail) -> None:
+    """The plan line in *Analyze game…*: plans overlapping inside one age are
+    a comma, the next one an arrow; a unit is named as the upgrade its line
+    had; and militia are a drush only when Man-at-Arms never came."""
+    from replays.game import UNIT_LINES
+    from replays.strategy import Plan, _label, _sentence
+    stages = [500.0, 900.0, 1190.0]
+
+    def age(t: float) -> int:
+        return sum(t >= s for s in stages)
+
+    for plans, want in (
+            ([Plan("men-at-arms", 540, 600), Plan("archers", 610, 800)], "men-at-arms → archers"),
+            ([Plan("unique unit", 900, 1100), Plan("fast imp", 1000, 1190), Plan("hand cannoneers", 1200, 1300)],
+             "unique unit, fast imp → hand cannoneers")):
+        if _sentence(plans, age) != want:
+            fail(f"read {_sentence(plans, age)!r}, wanted {want!r}")
+
+    scouts = UNIT_LINES["Scout Cavalry"]
+    upgrades = {"Scout Cavalry": [(800.0, "Light Cavalry"), (1300.0, "Hussar")]}
+    for t, want in ((700, "scouts"), (900, "light cavalry"), (1400, "hussars")):
+        got = _label(scouts, "Scout Cavalry", t, age(t), upgrades, False)
+        if got != want:
+            fail(f"a scout queued at {t}s read {got!r}, wanted {want!r}")
+    for unit, researched, want in (
+            ("Militia", ["Man-at-Arms", "Long Swordsman"], "long swordsmen"),
+            ("Militia", ["Man-at-Arms", "Legionary"], "legionaries"),
+            ("Archer", ["Crossbowman"], "crossbowmen"),
+            ("Archer", ["Crossbowman", "Arbalester"], "arbalesters"),
+            ("Knight", ["Cavalier", "Paladin"], "paladins"),
+            ("Galley", ["War Galley"], "war galleys")):
+        line = UNIT_LINES[unit]
+        upgrades = {line["line"]: [(1000.0 + k, name) for k, name in enumerate(researched)]}
+        got = _label(line, unit, 1500, age(1500), upgrades, True)
+        if got != want:
+            fail(f"{unit} after {', '.join(researched)} read {got!r}, wanted {want!r}")
+    militia = UNIT_LINES["Militia"]
+    for men_at_arms, want in ((True, "men-at-arms"), (False, "drush")):
+        got = _label(militia, "Militia", 200, 0, {}, men_at_arms)
+        if got != want:
+            fail(f"Dark Age militia with Man-at-Arms {men_at_arms} read {got!r}, wanted {want!r}")
+
+
+def check_forward_is_at_the_enemy(fail) -> None:
+    """Towers, castles and a douche count only when built forward: near an
+    enemy's starting Town Centre and clearly nearer it than one's own team.
+
+    No cached game has a douche, so this is the only thing that has seen one:
+    a stub replay, the starting Town Centre deleted, another one placed."""
+    from datetime import timedelta
+    from types import SimpleNamespace as Stub
+    from replays.game import Node, Placed
+    from replays.strategy import _aggression
+
+    replay = Stub(nodes={1: Node(1, 109, "Town Center", 20, 20, 1), 2: Node(2, 109, "Town Center", 100, 100, 2)})
+    delete = Stub(type=Stub(name="DELETE"), payload={"object_ids": [1]}, timestamp=timedelta(seconds=5))
+
+    def read(placed, actions=()) -> set[str]:
+        log = Stub(player=Stub(number=1), tcs={1}, placed=placed, actions=list(actions))
+        plans, _ = _aggression(replay, log, {2}, lambda t: 0, 3600.0)
+        return {p.label for p in plans}
+
+    for placed, actions, want in (
+            ([Placed(60, "Town Center", 85, 85)], [delete], {"douche"}),
+            ([Placed(60, "Town Center", 30, 30)], [delete], set()),
+            ([Placed(60, "Town Center", 85, 85)], [], set()),
+            ([Placed(300, "Watch Tower", 90, 90)], [], {"tower rush"}),
+            ([Placed(900, "Castle", 60, 60)], [], set()),
+            ([Placed(900, "Castle", 88, 88)], [], {"castle drop"})):
+        got = read(placed, actions)
+        if got != want:
+            fail(f"{[(b.name, b.x, b.y) for b in placed]} with {len(actions)} deletes read {got}, wanted {want}")
+
+
+CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
+          check_forward_is_at_the_enemy)
+
+
+def main() -> int:
+    failed = 0
+    for check in CHECKS:
+        problems: list[str] = []
+        check(problems.append)
+        print(f"{'FAIL' if problems else 'ok  '} {check.__name__}")
+        for problem in problems:
+            print(f"     {problem}")
+        failed += bool(problems)
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
