@@ -74,7 +74,9 @@ straight from the replay. **How many villagers** a row moves is partly inferred:
 replay records every queue click, including the ones there was no food for,
 so the age-up row's "at N vils" is an estimate. Techs, age-ups and soldiers
 are placed when they were done or came out — the click plus the game's own
-time for it, without civ bonuses — rather than when they were clicked. A task a villager held for
+time for it, without civ bonuses — rather than when they were clicked, and
+Loom after the villagers queued ahead of it wherever the next age-up says how
+long that was. A task a villager held for
 less than 30 seconds — 15 for gold, stone or a building site, which a build
 order sends villagers to in short stints — or gave up before they could have
 walked there, is left out, and so are single villagers swapped back and forth

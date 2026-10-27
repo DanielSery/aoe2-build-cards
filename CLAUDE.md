@@ -278,14 +278,27 @@ and `npm run preview` proxy `/api` to it.
   from the research's start — the click, or later if villagers queued before
   it were still to come out, which the nominal time back from the landing
   says — to the landing; a Town Centre tech is a row when it was done, off its
-  last click, since none follows the one that starts it, and one clicked
-  before an age-up is done before that research starts, as the Town Centre
-  does one thing at a time; another building's tech is mentioned when it was
-  done; a soldier when it came out; and the strategy line dates units and
-  upgrades the same way. Civ bonuses to research and training are not read,
-  and a queue click without the resources still counts, so a date is the
-  earliest it could have been. Villagers were always dated by when they came
-  out (`spawns`).
+  last click, since none follows the one that starts it; another building's
+  tech is mentioned when it was done; a soldier when it came out; and the
+  strategy line dates units and upgrades the same way. Civ bonuses to research
+  and training are not read, and a queue click without the resources still
+  counts, so a date is the earliest it could have been. Villagers were always
+  dated by when they came out (`spawns`).
+- **A Town Centre tech waits for the villagers queued ahead of it**
+  (`Opening._tc_done`). The queue is first in, first out, and the next
+  age-up's start is known from its landing, so when the Town Centre was still
+  busy at that click, the tech was done just in time for whatever was queued
+  in between: Loom clicked at 4:35 behind three villagers, with Feudal clicked
+  at 6:11 and started at 6:15, was done at 6:15 — dated off its click it was
+  done at 5:00, and drawn above villagers who came out before it. That
+  holds only if each thing in between waited for its turn: one clicked as its
+  turn came may have found the Town Centre idle for any time before it, and
+  then the click is all there is. A villager clicked without the food reads
+  as one that waited, so the date errs early, never late. Over 155 games this
+  moves 85 of 706 Town Centre techs, nearly all Loom, by a median of 18
+  seconds and at most 84. A tech with no busy age-up after it — the Town
+  Centre idle when the age-up was clicked, or none clicked — is still dated
+  off its click, and is early wherever villagers were queued ahead of it.
 - **mgz misreads `SPECIAL` and `UNGARRISON` unit ids** by a byte (an id times
   256, plus one), so `created_by` skips them. In most games the result is over
   a million and filtered anyway; on Socotra, whose ids are small, one

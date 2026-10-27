@@ -249,11 +249,38 @@ def check_a_short_task_is_not_on_the_card(fail) -> None:
         fail(f"the steps were {steps}, wanted {wanted}")
 
 
+def check_loom_waits_for_the_villagers_ahead(fail) -> None:
+    """Loom clicked behind villagers is done when the queue reaches it. With
+    Feudal clicked next while the Town Centre was still busy, that is just in
+    time for whatever was queued in between -- but only if each of those
+    waited for its turn, or the Town Centre may have stood idle before it."""
+    from types import SimpleNamespace as Stub
+    from replays.card import Opening
+    from replays.game import Event
+
+    def done(between):
+        opening = object.__new__(Opening)
+        opening.ages, opening.clicked = {"feudal": (375.0, 505.0)}, {"feudal": 370.0}
+        opening.log = Stub(tcs={100})
+        loom = Event(280.0, "research", [100], what="Loom", takes=25.0)
+        opening.events = sorted([loom, Event(370.0, "research", [100], what="Feudal Age", takes=130.0)]
+                                + [Event(t, "queue", [100], what="Villager", takes=25.0) for t in between],
+                                key=lambda e: e.t)
+        return round(opening._tc_done(loom), 3)
+
+    for between, wanted, why in (([], 374.999, "nothing queued after it"),
+                                 ([300.0], 350.0, "one villager queued after it"),
+                                 ([349.5], 305.0, "a villager clicked as its turn came")):
+        if done(between) != wanted:
+            fail(f"with {why}, Loom was done at {done(between)}, wanted {wanted}")
+
+
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built,
           check_a_card_names_new_villagers_once,
           check_a_trip_forward_is_no_work,
-          check_a_short_task_is_not_on_the_card)
+          check_a_short_task_is_not_on_the_card,
+          check_loom_waits_for_the_villagers_ahead)
 
 
 def main() -> int:

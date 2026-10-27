@@ -54,6 +54,7 @@ ERRANDS = {"gold", "stone"}
 FIRST_ORDER = 15.0  # how long before a step a camp its villager put up, or a deer it was sent at, still belongs to it
 ON_THE_WAY = 45.0   # and how long after: a camp the same villagers put up later is a camp of its own
 MERGE = 45.0        # commands this close with the same meaning are one row
+WAITED = 1.0        # a click this close to its turn may have found the Town Centre idle
 SWAP = 90.0         # one villager each way inside a phase is a swap, not a change of plan
 CASTLE_TAIL = 60.0
 
@@ -282,8 +283,8 @@ class Opening:
         spans = list(self.ages.values())
         loom = [e for e in self.events if e.kind == "research" and e.what == "Loom" and set(e.ids) & self.log.tcs]
         if loom:
-            start = self._tc_start(loom[-1].t)
-            spans.append((start, start + loom[-1].takes))
+            done = self._tc_done(loom[-1])
+            spans.append((done - loom[-1].takes, done))
         return sorted(spans)
 
     def _tc_start(self, t: float) -> float:
@@ -294,15 +295,40 @@ class Opening:
                 return self.ages[age][1]
         return t
 
-    def _tc_done(self, t: float, takes: float) -> float:
-        """When a Town Centre tech clicked at `t` was done. One clicked before
-        an age-up was done before that research started, however the estimate
-        of either falls: the Town Centre does one thing at a time."""
-        begun = self._tc_start(t)
+    def _tc_done(self, research: Event) -> float:
+        """When a Town Centre tech was done: its click and its time, or later
+        if villagers were queued ahead of it. The queue is first in, first
+        out, and the next age-up's start is known from its landing, so if the
+        Town Centre was still busy at that click, the tech was done just in
+        time for whatever was queued in between: Loom clicked behind three
+        villagers, with Feudal next, is done when Feudal starts. That holds
+        only if each thing in between waited for its turn; one clicked as its
+        turn came may have found the Town Centre idle for any time before it.
+        A villager clicked without the food counts as one that waited, so the
+        answer errs early, never late."""
+        begun = self._tc_start(research.t)
+        done = begun + research.takes
+        tc = set(research.ids) & self.log.tcs
+        age_ups = [e for e in self.events if e.kind == "research" and e.what in AGE_TECHS
+                   and e.t > research.t and set(e.ids) & tc]
+        age = next((AGE_TECHS[e.what] for e in age_ups if self.clicked.get(AGE_TECHS[e.what]) == e.t), None)
+        if age and self.clicked[age] < self.ages[age][0] - WAITED:
+            between = {}
+            for e in self.events:
+                if (research.t < e.t < self.clicked[age] and set(e.ids) & tc
+                        and (e.kind == "queue" or e.kind == "research" and e.what not in AGE_TECHS)):
+                    between[e.what if e.kind == "research" else id(e)] = e
+            end = self.ages[age][0]
+            for e in sorted(between.values(), key=lambda e: e.t, reverse=True):
+                end -= e.takes * e.amount
+                if e.t > end - WAITED:
+                    break
+            else:
+                done = max(done, end)
         for start, _ in self.ages.values():
-            if begun < start < begun + takes:
+            if begun < start <= done:
                 return start - 0.001
-        return begun + takes
+        return done
 
     @cached_property
     def spawns(self) -> list[tuple[float, int | None]]:
@@ -603,7 +629,7 @@ class Opening:
                 if e.what in TOWN_CENTRE_TECHS or set(e.ids) & self.log.tcs:
                     # The Town Centre's work for that while, so a step of its
                     # own like an age-up, not a mention on someone else's.
-                    done = self._tc_done(e.t, e.takes)
+                    done = self._tc_done(e)
                     tech = _row(done, None, None)
                     tech["research"] = True
                     tech["extras"].append((done, item))
