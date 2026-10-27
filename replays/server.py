@@ -233,7 +233,7 @@ def card(match: str, number: int) -> dict:
     if player is None:
         raise GameError(f"Match {match} has no player {number}.")
     profile = game.profile(player)
-    return Opening(game.replay, number).card(profile.get("name") or player.name,
+    return Opening(game.replay, number, _enemies(game, number)).card(profile.get("name") or player.name,
                                              profile.get("civName") or player.civilization or "Unknown civ",
                                              game.setting)
 

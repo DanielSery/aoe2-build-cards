@@ -336,11 +336,29 @@ and `npm run preview` proxy `/api` to it.
   - militia are a drush only if Man-at-Arms never came before Castle Age;
     otherwise they were the start of a men-at-arms rush;
   - forward is within 40 tiles of an enemy's starting Town Centre *and*
-    clearly (0.75×) nearer it than any Town Centre of one's own team. Against
-    one's own Town Centre alone, a pocket's castle by the flank's base read as
-    a castle drop.
+    clearly (0.75×) nearer it than any Town Centre of one's own team
+    (`Replay.forward`, which the card reads too). Against one's own Town
+    Centre alone, a pocket's castle by the flank's base read as a castle
+    drop.
   Every threshold there is judgement, not measurement, and units are counted
   off queue clicks, which include the unpaid ones.
+- **Villagers sent to the enemy are forward, and forward is no work.** A
+  tower rush, a castle drop, a douche, a forward barracks: the villagers who
+  walk there are taken off their work on the card — "10 tower forward ←
+  sheep", the place said in words because it has no icon of its own — and
+  come back off it — "9 stone ← forward" — when they are next given work at
+  home or at the enemy's gold. A walk is read off `MOVE` commands to a forward
+  spot, and helping to build a forward foundation off a right-click on it. A
+  trip only counts if its villagers put up or help build a tower, a castle, a
+  Town Centre, a barracks, range, stable or siege workshop there (`card.FRONT`):
+  without that rule, a team game's wall along its front and a chase after a
+  scout read as forward, and on Socotra, whose Town Centres are 45 tiles
+  apart, so does anything a few tiles past the middle. Of the 93 players over every
+  cached game left with a trip forward, 86 have a plan saying tower rush,
+  towers, castle drop or forward production, and the other 7 put up a siege
+  workshop forward. A forward walk is its own event kind, not an
+  `assign`, because the units in it need not be villagers, and `spawns` only
+  believes work.
 - **An imported card numbers villagers, and the "Going" bands not at all.**
   The Town Centre is researching through them, so no villager is added there:
   one first put to work in a Going band is written at the end of the band

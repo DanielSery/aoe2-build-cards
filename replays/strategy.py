@@ -21,19 +21,15 @@ import math
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 
-from .game import UNIT_LINES, PlayerLog, Replay, secs
+from .game import CASTLES, PRODUCTION, TOWERS, UNIT_LINES, PlayerLog, Replay, secs
 
 AGES = ("FEUDAL_AGE", "CASTLE_AGE", "IMPERIAL_AGE")
-TOWN_CENTRE = 109
 SIEGE_WORKSHOP = 49
 NOT_A_PLAN = {"Villager", "Fishing Ship", "Trade Cart", "Trade Cog", "Transport Ship", "Petard",
               "Trebuchet (Packed)", "King"}
 LABELS = {"Militia": "militia", "Scout Cavalry": "scouts", "Camel Rider": "camels", "Heavy Camel Rider": "heavy camels",
           "Imperial Camel Rider": "imperial camels", "Man-at-Arms": "men-at-arms",
           "Eagle Scout": "eagles"}
-TOWERS = {"Watch Tower", "Guard Tower", "Keep", "Bombard Tower", "Donjon"}
-CASTLES = {"Castle", "Krepost"}
-PRODUCTION = {"Barracks", "Archery Range", "Stable"}
 
 FEW = 3            # fewer of a line than this in an age is no plan
 SHARE = 0.2        # nor is a line under this share of the age's army
@@ -41,8 +37,6 @@ PER_AGE = 2        # lines named per age, most made first
 BOOM = 2           # Town Centres beyond the first that make a boom
 FAST_IMP = 300.0   # Imperial clicked this soon after reaching Castle Age
 IMP_SECONDS = 190.0
-REACH = 40.0       # tiles from an enemy's Town Centre a forward building is within
-FORWARD = 0.75     # and how much nearer to it than to any of the team's own
 AFTER_IMP = 360.0  # how far into Imperial Age the plan is read
 SHOWN = 5
 
@@ -55,7 +49,7 @@ class Plan:
 
 
 def strategy(replay: Replay, number: int, enemies: set[int]) -> str:
-    log = PlayerLog(replay, number)
+    log = PlayerLog(replay, number, enemies)
     landed: dict[str, float] = {}
     for u in replay.match.uptimes:
         if u.player is log.player and u.age.name in AGES:
@@ -67,7 +61,7 @@ def strategy(replay: Replay, number: int, enemies: set[int]) -> str:
 
     end = stages[2] + AFTER_IMP if stages[2] < math.inf else replay.match.duration.total_seconds()
     plans = _units(log, age, stages, end) + _boom(log, stages, end) + _fast_imp(log, stages)
-    aggressive, forward = _aggression(replay, log, enemies, age, end)
+    aggressive, forward = _aggression(log, age, end)
     # A barracks at their door is how the units after it were meant, not a plan
     # of its own.
     for t in forward:
@@ -177,23 +171,9 @@ def _fast_imp(log: PlayerLog, stages: list[float]) -> list[Plan]:
     return [Plan("fast imp", clicks[-1], landing)]
 
 
-def _aggression(replay: Replay, log: PlayerLog, enemies: set[int], age,
-                end: float) -> tuple[list[Plan], list[float]]:
-    """Towers, castles and a douche's Town Centre built forward, and when a
-    production building was.
-
-    Forward is within `REACH` of an enemy's starting Town Centre and clearly
-    nearer it than any Town Centre of one's own team: a castle half way across
-    the map, or one by an ally's base that happens to face the enemy, defends.
-    A nomad start has no Town Centres to measure from, so nothing is forward."""
-    homes: dict[int, tuple[float, float]] = {}
-    for n in replay.nodes.values():
-        if n.type == TOWN_CENTRE and n.owner:
-            homes.setdefault(n.owner, (n.x, n.y))
-    theirs = [homes[n] for n in enemies if n in homes]
-    ours = [xy for n, xy in homes.items() if n not in enemies]
-    if not theirs or not ours:
-        return [], []
+def _aggression(log: PlayerLog, age, end: float) -> tuple[list[Plan], list[float]]:
+    """Towers, castles and a douche's Town Centre built forward
+    (`Replay.forward`), and when a production building was."""
     deleted = min((secs(a) for a in log.actions
                    if a.type.name == "DELETE" and set(a.payload.get("object_ids") or []) & log.tcs),
                   default=math.inf)
@@ -202,8 +182,7 @@ def _aggression(replay: Replay, log: PlayerLog, enemies: set[int], age,
     for b in log.placed:
         if b.t > end:
             break
-        near = min(math.dist((b.x, b.y), xy) for xy in theirs)
-        if near > REACH or near >= FORWARD * min(math.dist((b.x, b.y), xy) for xy in ours):
+        if not log.forward(b.x, b.y):
             continue
         if b.name in PRODUCTION:
             forward.append(b.t)

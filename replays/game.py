@@ -13,6 +13,7 @@ import math
 from bisect import bisect_right
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
+from typing import Callable
 from pathlib import Path
 
 from aoe2planner.gamedata import GameData
@@ -47,6 +48,12 @@ SOLDIERING = {"FORMATION", "PATROL", "STANCE", "DE_ATTACK_MOVE", "ATTACK_GROUND"
 BUILDING = {"BUILD", "REPAIR", "WALL"}
 MATCH = 10.0           # a deleted id first named this long after a placement could be anything
 BUILD_FALLBACK = 60.0  # seconds to build what the game data does not know
+TOWN_CENTRE = 109
+TOWERS = {"Watch Tower", "Guard Tower", "Keep", "Bombard Tower", "Donjon"}
+CASTLES = {"Castle", "Krepost"}
+PRODUCTION = {"Barracks", "Archery Range", "Stable"}
+REACH = 40.0           # tiles from an enemy's Town Centre a spot counts as forward within
+FORWARD = 0.75         # and how much nearer to it than to any of the team's own
 
 
 def job_of_type(type_id: int) -> str | None:
@@ -90,7 +97,7 @@ class Placed:
 @dataclass
 class Event:
     t: float
-    kind: str  # assign | build | rally | research | queue
+    kind: str  # assign | build | forward | rally | research | queue
     ids: list = field(default_factory=list)
     job: str | None = None
     building: str | None = None
@@ -166,6 +173,26 @@ class Replay:
             return self._bounds[k]
         return self._bounds[k + 1] if k + 1 < len(self._bounds) else math.inf
 
+    def forward(self, enemies: set[int]) -> Callable[[float, float], bool]:
+        """Whether a spot is at the enemy's end of the map: within `REACH` of
+        an enemy's starting Town Centre and clearly nearer it than any Town
+        Centre of one's own team. A castle half way across the map, or one by
+        an ally's base that happens to face the enemy, defends. A nomad start
+        has no Town Centres to measure from, so nothing is forward."""
+        homes: dict[int, tuple[float, float]] = {}
+        for n in self.nodes.values():
+            if n.type == TOWN_CENTRE and n.owner:
+                homes.setdefault(n.owner, (n.x, n.y))
+        theirs = [homes[n] for n in enemies if n in homes]
+        ours = [xy for n, xy in homes.items() if n not in enemies]
+        if not theirs or not ours:
+            return lambda x, y: False
+
+        def ahead(x: float, y: float) -> bool:
+            near = min(math.dist((x, y), xy) for xy in theirs)
+            return near <= REACH and near < FORWARD * min(math.dist((x, y), xy) for xy in ours)
+        return ahead
+
     def trees_near(self, x: float, y: float, reach: float = 3.0) -> int:
         cx, cy = int(x) // 4, int(y) // 4
         return sum(1 for i in (-1, 0, 1) for j in (-1, 0, 1)
@@ -187,9 +214,10 @@ class Replay:
 
 
 class PlayerLog:
-    def __init__(self, replay: Replay, number: int):
+    def __init__(self, replay: Replay, number: int, enemies: set[int] = frozenset()):
         self.r = replay
         self.player = next(p for p in replay.match.players if p.number == number)
+        self.forward = replay.forward(enemies)
         self.actions = [a for a in replay.match.actions if a.player is self.player]
         own = [n for n in replay.nodes.values() if n.owner == number]
         self.tcs = {n.id for n in own if n.name == "Town Center"}
@@ -308,24 +336,44 @@ class PlayerLog:
         return [i for i in ids if i in self.start_villagers
                 or i > self.r.last_starting_id and i not in self.soldiers]
 
+    def ahead(self, a) -> bool:
+        """Whether a command sends its units forward (`Replay.forward`)."""
+        node = self.r.nodes.get(a.payload.get("target_id"))
+        at = (a.position.x, a.position.y) if a.position is not None else (node.x, node.y) if node else None
+        return at is not None and self.forward(*at)
+
     def events(self) -> list[Event]:
+        """Villagers sent forward to walk there, or to put up or help build a
+        tower, a castle or a wall there, are on a job of their own, "forward",
+        which is no work. A fight is not: villagers set on a scout that came
+        for the hunt are not going anywhere. A forward walk is a `forward`
+        event rather than an `assign`, because its units need not be
+        villagers: a men-at-arms nobody gave a soldier's command reads like one,
+        and only work proves a villager."""
         out: list[Event] = []
         for a in self.actions:
             t, kind, p = secs(a), a.type.name, a.payload
             if self.built(a):
                 b = Placed(t, building_name(p), a.position.x, a.position.y)
+                job = self.dropsite_job(b) or ("forward" if self.ahead(a) else None)
                 out.append(Event(t, "build", self.villagers(p.get("object_ids", [])),
-                                 job=self.dropsite_job(b), building=b.name, site=(b.name, t)))
+                                 job=job, building=b.name, site=(b.name, t)))
             elif kind == "WALL":
                 # A dragged wall is its own command, not a BUILD.
                 out.append(Event(t, "build", self.villagers(p.get("object_ids", [])),
-                                 building=building_name(p)))
+                                 job="forward" if self.ahead(a) else None, building=building_name(p)))
             elif kind == "ORDER":
                 ids = self.villagers(p.get("object_ids", []))
                 job, b = self.target(a) if ids else (None, None)
                 if job:
                     out.append(Event(t, "assign", ids, job=job, building=b.name if b else None,
                                      site=(b.name, b.t) if b else None, target=p.get("target_id")))
+                elif b and self.ahead(a):
+                    out.append(Event(t, "forward", ids, job="forward", building=b.name))
+            elif kind == "MOVE" and self.ahead(a):
+                ids = self.villagers(p.get("object_ids", []))
+                if ids:
+                    out.append(Event(t, "forward", ids, job="forward"))
             elif kind == "GATHER_POINT" and set(p.get("object_ids", [])) & self.tcs:
                 target = p.get("target_id")
                 out.append(Event(t, "rally", job=self.rally_job(a),

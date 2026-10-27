@@ -1,6 +1,6 @@
 """The replay reader's offline checks: a link names its match, a strategy reads
-in order, forward means at the enemy's door, a cancelled building is none, and
-a card names new villagers once.
+in order, forward means at the enemy's door, a cancelled building is none, a
+card names new villagers once, and a trip forward is no work.
 
     python tools/check.py
 
@@ -93,15 +93,16 @@ def check_forward_is_at_the_enemy(fail) -> None:
     a stub replay, the starting Town Centre deleted, another one placed."""
     from datetime import timedelta
     from types import SimpleNamespace as Stub
-    from replays.game import Node, Placed
+    from replays.game import Node, Placed, Replay
     from replays.strategy import _aggression
 
     replay = Stub(nodes={1: Node(1, 109, "Town Center", 20, 20, 1), 2: Node(2, 109, "Town Center", 100, 100, 2)})
     delete = Stub(type=Stub(name="DELETE"), payload={"object_ids": [1]}, timestamp=timedelta(seconds=5))
 
     def read(placed, actions=()) -> set[str]:
-        log = Stub(player=Stub(number=1), tcs={1}, placed=placed, actions=list(actions))
-        plans, _ = _aggression(replay, log, {2}, lambda t: 0, 3600.0)
+        log = Stub(player=Stub(number=1), tcs={1}, placed=placed, actions=list(actions),
+                   forward=Replay.forward(replay, {2}))
+        plans, _ = _aggression(log, lambda t: 0, 3600.0)
         return {p.label for p in plans}
 
     for placed, actions, want in (
@@ -135,7 +136,8 @@ def check_a_cancelled_building_is_not_built(fail) -> None:
         act("DELETE", 62, object_ids=[201]),
         act("BUILD", 100, building="House", building_id=70, object_ids=[]),
         act("DELETE", 400, object_ids=[202])]),
-        nodes={}, last_starting_id=100, commanded=set(), created_by=bounds.__getitem__)
+        nodes={}, last_starting_id=100, commanded=set(), created_by=bounds.__getitem__,
+        forward=lambda enemies: lambda x, y: False)
     replay.match.actions.sort(key=lambda a: a.timestamp)
     standing = [b.name for b in PlayerLog(replay, 1).placed]
     if standing != ["House"]:
@@ -179,9 +181,47 @@ def check_a_card_names_new_villagers_once(fail) -> None:
         fail(f"villagers were new in the Going band: {going}")
 
 
+def check_a_trip_forward_is_no_work(fail) -> None:
+    """Villagers who walk to the enemy and put up a tower there are forward
+    until they are given work again, and the tower goes with them; a walk
+    forward that builds nothing is no trip at all."""
+    from types import SimpleNamespace as Stub
+    from replays.card import Opening, building_icon
+    from replays.game import Event
+
+    opening = object.__new__(Opening)
+    opening.ages, opening.end = {}, 900.0
+    opening.log = Stub(tcs=set(), start_villagers=[1, 2])
+    opening.__dict__["spawns"] = []
+    opening.events = [
+        Event(10.0, "assign", [1, 2], job="wood"),
+        Event(100.0, "forward", [1, 2], job="forward"),
+        Event(130.0, "build", [1, 2], job="forward", building="Watch Tower", site=("Watch Tower", 130.0)),
+        Event(300.0, "assign", [1, 2], job="gold"),
+        Event(400.0, "forward", [2], job="forward"),
+        Event(500.0, "assign", [2], job="wood")]
+    steps = [(t, v, src, dst) for t, v, src, dst, *_ in opening.transitions()]
+    wanted = [(10.0, 1, "idle", "wood"), (10.0, 2, "idle", "wood"), (100.0, 1, "wood", "forward"),
+              (100.0, 2, "wood", "forward"), (300.0, 1, "forward", "gold"), (300.0, 2, "forward", "gold"),
+              (500.0, 2, "gold", "wood")]
+    if steps != wanted:
+        fail(f"the steps were {steps}, wanted {wanted}")
+
+    def read(place):
+        return place and ([i.get("icon") or i.get("value") for i in place["items"]], place["label"])
+
+    rows = [(read(step["moveTo"]), read(step["from"])) for step in opening.card("x", "", "")["sections"][0]["steps"]
+            if step["from"]]
+    trip = ((["2", building_icon("Watch Tower")], "forward"), (["resource-wood"], ""))
+    back = ((["2", "resource-gold"], ""), ([], "forward"))
+    if rows[:2] != [trip, back]:
+        fail(f"the moves read {rows}, wanted {[trip, back]} first")
+
+
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built,
-          check_a_card_names_new_villagers_once)
+          check_a_card_names_new_villagers_once,
+          check_a_trip_forward_is_no_work)
 
 
 def main() -> int:
