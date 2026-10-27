@@ -394,17 +394,22 @@ and `npm run preview` proxy `/api` to it.
   (`Opening._tc_start`). Units made are mentioned, in the extras of the row
   being worked when the first of them came out in that phase, like a tech
   from any other building.
-- **A task held under 15 seconds, or given up before the villager got there,
+- **A task held under 30 seconds, or given up before the villager got there,
   never happened** (`card.BRIEF`, `_begun`). A villager sent somewhere and
   sent on again sooner than that — a misclick, a change of mind, a gather
-  point left at once, the wood swapped for the boar while still walking to
-  the trees — is drawn going straight to where they went next, and a detour
-  back to the same work is no move at all. The walk is a straight line at the
-  villager's speed in the game data, from where the previous command had got
-  them to; a run of commands to one work is timed by its first target, since
-  stepping between carcasses or trees is the work itself. Over 88 cards the
-  15 seconds drop about 3% of villager steps and 1.4% of rows; over 14
-  games the walk drops 0.8% more steps and 0.7% more rows.
+  point left at once, a new villager on the sheep sent on to the boar, the
+  wood swapped for the boar while still walking to the trees — is drawn going
+  straight to where they went next, and a detour back to the same work is no
+  move at all. Gold, stone and a building site count from 15 seconds
+  (`ERRAND`), there and straight back included: a build order sends
+  villagers for "50 stone", or to put up a camp and go, and dropping a short
+  stint as an errand once took exactly those off the card. The walk is a
+  straight line at the villager's speed in the game data, from where the
+  previous command had got them to; a run of commands to one work is timed by
+  its first target, since stepping between carcasses or trees is the work
+  itself. Over 106 cards, 30 seconds rather than 15 drops 4% of villager
+  steps and 1.5% of rows, most of them between the sheep and the hunt, and
+  the exception keeps 40 of those steps and 21 of the rows.
 - **A row's new villagers are the first column, its moved ones the second.**
   Three off the sheep and one new to the hunt is "1 hunt" and
   "3 hunt ← sheep" on one row, and so are new villagers to one place and a move

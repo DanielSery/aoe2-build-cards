@@ -48,10 +48,11 @@ PHASES = [("Dark Age", "dark"), ("Going Feudal", "transition"), ("Feudal Age", "
 VILLAGER_SECONDS = 25.0
 VILLAGER_SPEED = DATA.unit_by_id(83)["speed"]  # tiles a second
 SPACING = 0.9       # of a villager's time: slack for a faster Town Centre, as Persian age-ups run 5-9% under the nominal time
-BRIEF = 15.0        # a task replaced this soon, or before the villager got there, is not on the card
+BRIEF = 30.0        # a task replaced this soon, or before the villager got there, is not on the card
+ERRAND = 15.0       # but one to gold, stone or a building site is from this soon: "50 stone", a camp for others
+ERRANDS = {"gold", "stone"}
 FIRST_ORDER = 15.0  # how long before a step a camp its villager put up, or a deer it was sent at, still belongs to it
 ON_THE_WAY = 45.0   # and how long after: a camp the same villagers put up later is a camp of its own
-ROUND_TRIP = 25.0   # there and straight back is an errand, not a reassignment
 MERGE = 45.0        # commands this close with the same meaning are one row
 SWAP = 90.0         # one villager each way inside a phase is a swap, not a change of plan
 CASTLE_TAIL = 60.0
@@ -176,10 +177,12 @@ def _paired(line: list[dict]) -> list[dict]:
 
 def _begun(plan: list[tuple], here: tuple[float, float] | None) -> list[tuple]:
     """The commands a villager acted on. A run of commands to one work counts
-    only if the villager kept it for `BRIEF` and long enough to reach its first
-    target from wherever the previous command had got them to: sent to the
-    wood and on to the boar before reaching the trees, they never cut any. The
-    walk is estimated in a straight line at a villager's speed."""
+    only if the villager kept it for `BRIEF` -- `ERRAND` if it was gold, stone
+    or putting something up, which a build order asks for in short stints --
+    and long enough to reach its first target from wherever the previous
+    command had got them to: sent to the wood and on to the boar before
+    reaching the trees, they never cut any. The walk is estimated in a
+    straight line at a villager's speed."""
     runs: list[list[tuple]] = []
     for p in plan:
         if runs and runs[-1][-1][1] == p[1]:
@@ -200,22 +203,18 @@ def _begun(plan: list[tuple], here: tuple[float, float] | None) -> list[tuple]:
                 arrive = p[0] + walk
             share = min(1.0, ((run[j + 1][0] if j + 1 < len(run) else ends) - p[0]) / walk) if walk else 1.0
             here = (here[0] + (at[0] - here[0]) * share, here[1] + (at[1] - here[1]) * share)
-        if k + 1 == len(runs) or k == 0 and run[0][1] == "idle" or ends - run[0][0] >= BRIEF and ends >= arrive:
+        brief = ERRAND if any(p[1] in ERRANDS or p[4] for p in run) else BRIEF
+        if k + 1 == len(runs) or k == 0 and run[0][1] == "idle" or ends - run[0][0] >= brief and ends >= arrive:
             kept.extend(run)
     return kept
 
 
 def _settled(kept: list[tuple]) -> list[tuple]:
-    """A villager's steps with the repeats and errands taken out: the same work
-    twice is one step, and there and straight back is none."""
+    """A villager's steps: the same work twice is one step."""
     steps: list[tuple] = []
     for step in kept:
-        if steps and steps[-1][1] == step[1]:
-            continue
-        if len(steps) >= 2 and step[1] == steps[-2][1] and step[0] - steps[-1][0] <= ROUND_TRIP:
-            steps.pop()
-            continue
-        steps.append(step)
+        if not steps or steps[-1][1] != step[1]:
+            steps.append(step)
     return steps
 
 
@@ -421,20 +420,21 @@ class Opening:
         home = next(((nodes[i].x, nodes[i].y) for i in self.log.tcs if i in nodes), None)
         origin = {v: (nodes[v].x, nodes[v].y) for v in self.log.start_villagers if v in nodes}
         for v in self.log.start_villagers:
-            plans[v].append((0.0, "idle", None, None, None))
+            plans[v].append((0.0, "idle", None, None, False, None))
         for k, (t, i) in enumerate(self.spawns):
             rally = self.rally_at(t)
             raw, target, at = (rally.job, rally.target, rally.at) if rally else (None, None, None)
-            plans[i if i is not None else f"unseen{k}"].append((t, card_job(raw) or "idle", raw, target, at))
+            plans[i if i is not None else f"unseen{k}"].append((t, card_job(raw) or "idle", raw, target, False, at))
         for e in self.events:
             if e.t > self.end or e.kind not in ("assign", "build", "forward") or not e.job:
                 continue
             # What goes up forward is the trip's, as a camp is its work's.
             site = (e.site if e.site and (e.site[0] in DROPSITES and e.site[0] not in FIELDS or e.job == "forward")
                     and e.t - e.site[1] <= MERGE else None)
+            put_up = e.kind == "build" or e.what == "build" or site is not None
             for v in e.ids:
                 if v in plans:
-                    plans[v].append((e.t, card_job(e.job), e.job, e.target, e.at))
+                    plans[v].append((e.t, card_job(e.job), e.job, e.target, put_up, e.at))
                     if site:
                         built[v].append((e.t, card_job(e.job), site))
                     if e.job == "forward" and (e.building in FRONT or e.what in ("fight", "lame")):
@@ -457,7 +457,7 @@ class Opening:
                 until = steps[k + 1][0] if k + 1 < len(steps) else float("inf")
                 way = until if job == "forward" else min(until, t + ON_THE_WAY)
                 sites = {site for when, on, site in built[v] if on == job and t - FIRST_ORDER <= when < way}
-                deer = {target or "?" for when, _, raw, target, _ in kept
+                deer = {target or "?" for when, _, raw, target, *_ in kept
                         if raw == "deer" and t - FIRST_ORDER <= when < until}
                 if job != "idle":
                     out.append((t, v, previous, job, sites, deer))

@@ -218,10 +218,42 @@ def check_a_trip_forward_is_no_work(fail) -> None:
         fail(f"the moves read {rows}, wanted {[trip, back]} first")
 
 
+def check_a_short_task_is_not_on_the_card(fail) -> None:
+    """A villager put on one work and sent elsewhere inside half a minute is
+    drawn going straight there -- unless it was gold, stone or a building
+    site, which a build order asks for in short stints."""
+    from types import SimpleNamespace as Stub
+    from replays.card import Opening
+    from replays.game import Event
+
+    opening = object.__new__(Opening)
+    opening.ages, opening.end, opening.r = {}, 900.0, Stub(nodes={})
+    opening.log = Stub(tcs=set(), start_villagers=[1, 2, 3, 4])
+    opening.__dict__["spawns"] = []
+    opening.events = [
+        Event(10.0, "assign", [1], job="sheep"),
+        Event(35.0, "assign", [1], job="boar"),
+        Event(10.0, "assign", [2, 3, 4], job="wood"),
+        Event(100.0, "assign", [2], job="stone"),
+        Event(120.0, "assign", [2], job="wood"),
+        Event(100.0, "build", [3], job="gold", building="Mining Camp", site=("Mining Camp", 100.0)),
+        Event(118.0, "assign", [3], job="wood"),
+        Event(100.0, "assign", [4], job="berries"),
+        Event(120.0, "assign", [4], job="sheep")]
+    opening.events.sort(key=lambda e: e.t)
+    steps = [(t, v, src, dst) for t, v, src, dst, *_ in opening.transitions()]
+    wanted = [(10.0, 2, "idle", "wood"), (10.0, 3, "idle", "wood"), (10.0, 4, "idle", "wood"),
+              (35.0, 1, "idle", "hunt"), (100.0, 2, "wood", "stone"), (100.0, 3, "wood", "gold"),
+              (118.0, 3, "gold", "wood"), (120.0, 2, "stone", "wood"), (120.0, 4, "wood", "sheep")]
+    if steps != wanted:
+        fail(f"the steps were {steps}, wanted {wanted}")
+
+
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built,
           check_a_card_names_new_villagers_once,
-          check_a_trip_forward_is_no_work)
+          check_a_trip_forward_is_no_work,
+          check_a_short_task_is_not_on_the_card)
 
 
 def main() -> int:
