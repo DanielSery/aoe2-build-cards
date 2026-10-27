@@ -119,15 +119,59 @@ def _in_order(timed: list[tuple[float, dict]]) -> list[dict]:
     return squeeze([item for _, item in sorted(timed, key=lambda x: x[0])])
 
 
+def _place(items: list[dict], label: str = "") -> dict:
+    return {"items": items, "label": label}
+
+
+def _step(to: list[dict], via: list[dict] | None = None, label: str = "", extras: list[dict] | None = None) -> dict:
+    """A row with only its new villagers' half. `moveTo` is always written, even
+    empty: a row without it is the app's older one-sentence shape, which
+    `migrate.ts` turns into a move wherever there is a source."""
+    return {"id": _id(), "to": _place(to, label), "via": _place(via) if via else None,
+            "moveTo": None, "moveVia": None, "from": None, "extras": extras or []}
+
+
+def _unit(row: dict, step: dict) -> dict:
+    """A written row, and which column it fills: `new` names where the new
+    villagers went on a row with only those, `move` the source and destination
+    on a row with only a move."""
+    unit = {"t": row["t"], "step": step, "new": None, "move": None}
+    if row["to"] is not None and bool(row["new"]) != bool(row["from"]):
+        unit["new" if row["new"] else "move"] = row["to"] if row["new"] else (row["from"], row["to"])
+    return unit
+
+
+def _paired(line: list[dict]) -> list[dict]:
+    """New villagers sent to one place and a move to another at the same time
+    are one row: "2 wood", then "boar ← 2 sheep", then the deer. Not where the
+    new villagers go is the move's source or destination: the move is counted
+    first, which would be the wrong order for those."""
+    out: list[dict] = []
+    for unit in line:
+        last = out[-1] if out else None
+        pair = last and sorted((last, unit), key=lambda u: not u["new"])
+        if (pair and pair[0]["new"] and pair[1]["move"] and abs(unit["t"] - last["t"]) <= MERGE
+                and pair[0]["new"] not in pair[1]["move"]):
+            new, move = pair
+            out[-1] = {"t": last["t"], "new": None, "move": None,
+                       "step": move["step"] | {"to": new["step"]["to"], "via": new["step"]["via"],
+                                               "extras": new["step"]["extras"] + move["step"]["extras"]}}
+        else:
+            out.append(unit)
+    return out
+
+
 def _row(t: float, src: str | None, dst: str | None, via: set | None = None,
          who: set | None = None, new: set | None = None, deer: set | None = None) -> dict:
-    """`via` holds the drop-off sites put up on the way, as (name, placed at);
-    the other buildings of the moment go up on the way too (`built`); techs are
-    only mentioned (`extras`). `all` says nobody is left on the source.
-    `research` marks a Town Centre tech's own row."""
-    return {"t": t, "until": t, "from": src, "to": dst, "via": via or set(), "who": who or set(),
-            "new": new or set(), "built": [], "extras": [], "all": False, "deer": deer or set(),
-            "research": False}
+    """`via` holds the drop-off sites put up on the way, as (name, placed at):
+    `via_moved` by the villagers taken off `src` (`who`), `via_new` by the new
+    ones (`new`) -- `via` goes to whichever started the row. The other
+    buildings of the moment go up on the way too (`built`); techs are only
+    mentioned (`extras`). `research` marks a Town Centre tech's own row."""
+    return {"t": t, "until": t, "from": src, "to": dst,
+            "via_moved": (via or set()) if src else set(), "via_new": set() if src else (via or set()),
+            "who": who or set(), "new": new or set(), "built": [], "extras": [],
+            "deer": deer or set(), "research": False}
 
 
 class Opening:
@@ -326,10 +370,11 @@ class Opening:
     def rows(self) -> list[dict]:
         """`who` are the villagers a row takes from its source; `new` are the
         ones that join them there without leaving anything, so a row reads
-        "4 hunt ← 3 sheep": three off the sheep and one more besides. A new
-        villager joins the last row before it whenever that row went where it
-        goes, however long ago, so one villager off the sheep building the mill
-        and the next four sent after them are "5 berries ← mill ← 1 sheep"."""
+        "1 hunt" and "hunt ← 3 sheep": three off the sheep and one more
+        besides. A new villager joins the last row before it whenever that row
+        went where it goes, however long ago, so one villager off the sheep
+        building the mill and the next four sent after them are one row, and a
+        move joins the latest move row of the phase when it is the same move."""
         moved = self.transitions()
         joins = [x for x in moved if x[2] in (None, "idle")]
 
@@ -345,12 +390,14 @@ class Opening:
             # Only a villager already on the source when the move began joins
             # it. One that got there since -- new, or back again -- would be
             # taken off a row before the card has put it there.
-            same = next((row for row in reversed(rows) if t - row["until"] <= MERGE
+            latest = next((row for row in reversed(rows) if self.section_of(row["t"]) == self.section_of(t)), None)
+            same = next((row for row in reversed(rows)
+                         if (t - row["until"] <= MERGE or row is latest)
                          and (row["from"], row["to"]) == (src, dst) and on_since <= row["t"]
                          and self.section_of(row["t"]) == self.section_of(t)), None)
             if same:
                 same["who"].add(v)
-                same["via"] |= sites
+                same["via_moved"] |= sites
                 same["deer"] |= deer
                 same["until"] = t
             else:
@@ -377,7 +424,7 @@ class Opening:
                 host = last
             if host:
                 host["new"].add(v)
-                host["via"] |= sites
+                host["via_new"] |= sites
                 host["deer"] |= deer
             else:
                 rows.append(_row(t, None, dst, set(sites), new={v}, deer=set(deer)))
@@ -392,17 +439,9 @@ class Opening:
         # So is a camp: several rows' villagers can have helped build it.
         placed: set = set()
         for row in rows:
-            row["via"] -= placed
-            placed |= row["via"]
-
-        for row in rows:
-            if row["from"]:
-                jobs: dict = {}
-                for t, v, _, dst, *_ in moved:
-                    if t > row["until"]:
-                        break
-                    jobs[v] = dst
-                row["all"] = row["from"] not in jobs.values()
+            for half in ("via_moved", "via_new"):
+                row[half] -= placed
+                placed |= row[half]
 
         def attach(t: float, item: dict, part: str) -> None:
             """Onto the row being worked when it happened, never across a phase
@@ -470,42 +509,56 @@ class Opening:
         sections = {label: {"id": _id(), "label": label, "tone": tone, "numbered": tone != "transition",
                             "steps": []}
                     for label, tone in PHASES}
+        on_card: Counter = Counter()  # the app's figures, as it will count this card
+        lines: dict[str, list[dict]] = defaultdict(list)
         for row in self.rows():
-            sites = [name for name, _ in sorted(row["via"], key=lambda site: site[1])]
-            built = [icon(building_icon(name)) if building_icon(name) else text(name) for name in sites]
-            built += _in_order(row["built"])
+            def drawn(sites: set) -> list[dict]:
+                return [icon(building_icon(name)) if building_icon(name) else text(name)
+                        for name, _ in sorted(sites, key=lambda site: site[1])]
+
+            moved_via, new_via = drawn(row["via_moved"]), drawn(row["via_new"])
+            # The other buildings of the moment go up beside the new villagers,
+            # or beside the moved ones on a row that has none.
+            (new_via if row["new"] or not row["from"] else moved_via).extend(_in_order(row["built"]))
             extras = _in_order(row["extras"])
             # A place takes icons and numbers only, so a building nothing can
             # draw is named among the extras instead.
-            unnamed = [i for i in built if i["kind"] != "icon"]
-            built = [i for i in built if i["kind"] == "icon"]
-            steps = sections[self.section_of(row["t"])]["steps"]
+            unnamed = [i for i in moved_via + new_via if i["kind"] != "icon"]
+            moved_via = [i for i in moved_via if i["kind"] == "icon"]
+            new_via = [i for i in new_via if i["kind"] == "icon"]
+            line = lines[self.section_of(row["t"])]
             if row["to"] is None:
-                steps.append({"id": _id(), "via": None, "from": None,
-                              "to": {"items": built + [i for i in extras if i["kind"] == "icon"], "label": ""},
-                              "extras": unnamed + [i for i in extras if i["kind"] != "icon"]})
+                line.append(_unit(row, _step(new_via + [i for i in extras if i["kind"] == "icon"],
+                                              extras=unnamed + [i for i in extras if i["kind"] != "icon"])))
                 continue
-            leaving, arriving = len(row["who"]), len(row["who"]) + len(row["new"])
-            source = None
+            if row["to"] == "hunt" and row["deer"]:
+                herd = len(row["deer"])
+                extras = ([count(herd)] if herd > 1 else []) + [icon("gaia-deer")] + extras
+            target = icon(JOB_ICON[row["to"]])
+            on_card[row["to"]] += len(row["new"])
+            step = _step([count(len(row["new"])), target] if row["new"] else [], new_via,
+                         extras=unnamed + extras)
             if row["from"]:
-                gone = count("All") if row["all"] else count(leaving)
-                source = {"items": [gone, icon(JOB_ICON[row["from"]])], "label": ""}
-            if row["to"] == "hunt":
-                extras = squeeze([icon("gaia-deer") for _ in row["deer"]]) + extras
-            steps.append({
-                "id": _id(),
-                "to": {"items": [count(arriving), icon(JOB_ICON[row["to"]])], "label": ""},
-                "via": {"items": built, "label": ""} if built else None,
-                "from": source,
-                "extras": unnamed + extras,
-            })
+                # Where they went needs no number: it is everyone off the
+                # source. "All" only where it is exactly what the card has
+                # there, since the app moves the whole figure for it.
+                leaving = len(row["who"])
+                gone = count("All") if leaving == on_card[row["from"]] else count(leaving)
+                on_card[row["from"]] -= leaving
+                on_card[row["to"]] += leaving
+                step |= {"moveTo": _place([icon(JOB_ICON[row["to"]])]),
+                         "moveVia": _place(moved_via) if moved_via else None,
+                         "from": _place([gone, icon(JOB_ICON[row["from"]])])}
+            line.append(_unit(row, step))
+
+        for label, line in lines.items():
+            sections[label]["steps"] = [unit["step"] for unit in _paired(line)]
 
         for age, going in (("feudal", "Going Feudal"), ("castle", "Going Castle")):
             if age in self.ages:
                 click, landing = self.ages[age]
                 label = f"click {clock(click)} at {self.population_at(click)} vils, up {clock(landing)}"
-                sections[going]["steps"].insert(0, {"id": _id(), "via": None, "from": None, "extras": [],
-                                                    "to": {"items": [icon(AGE_ICON[age])], "label": label}})
+                sections[going]["steps"].insert(0, _step([icon(AGE_ICON[age])], label=label))
 
         made: dict[str, list] = defaultdict(list)
         for e in self.events:
@@ -515,10 +568,8 @@ class Opening:
         for label, units in made.items():
             drawable = [u for u in units if unit_icon(u)]
             other = [u for u in units if not unit_icon(u)]
-            sections[label]["steps"].append({
-                "id": _id(), "via": None, "from": None,
-                "to": {"items": [icon(unit_icon(u)) for u in drawable], "label": ""},
-                "extras": [text(", ".join(other))] if other else []})
+            sections[label]["steps"].append(_step([icon(unit_icon(u)) for u in drawable],
+                                                  extras=[text(", ".join(other))] if other else []))
 
         ages = ", ".join(f"{age.title()} {clock(landing)}" for age, (_, landing) in self.ages.items()
                          if age in ("feudal", "castle"))

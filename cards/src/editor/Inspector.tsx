@@ -6,7 +6,7 @@
  * one-way click on the card.
  */
 
-import { SLOTS, TONES, addItem, addSection, box, count, dropItem,
+import { SLOTS, TONES, addItem, addSection, count, dropItem,
          dropSection, dropStep, duplicateStep, findItem, findSection, findStep,
          mapSection, mapSlot, moveItem, moveSection, moveStep, text, toggleSlot,
          updateItem } from "../model/card";
@@ -22,7 +22,7 @@ type Props = {
 };
 
 const KINDS: Record<Item["kind"], string> = {
-  icon: "Icon", count: "Number", text: "Text", box: "Box",
+  icon: "Icon", count: "Number", text: "Text",
 };
 
 export function Inspector({ card, selected, apply, select, addRow }: Props) {
@@ -127,7 +127,7 @@ function RowPanel({ card, at, apply, select, addRow }: Pick<Props, "card" | "app
       {item.kind === "icon"
         ? <img src={iconUrl(item.icon)} alt={iconLabel(item.icon)} />
         : <span className="glyph">{item.kind === "count" ? item.value
-            : item.kind === "box" ? "▣" : "T"}</span>}
+            : "T"}</span>}
     </button>
   );
 
@@ -136,8 +136,11 @@ function RowPanel({ card, at, apply, select, addRow }: Pick<Props, "card" | "app
       {SLOTS.map(([part, title, hint]) => {
         const slot = step[part];
         const where: Where = { ...at, part };
+        const heading = part === "to" ? "New villagers" : part === "moveTo" ? "Moved off other work" : null;
         return (
-          <div key={part} className="slot-block" onClick={() => select(where)}>
+          <div key={part}>
+          {heading && <h2 className="section">{heading}</h2>}
+          <div className="slot-block" onClick={() => select(where)}>
             <div className="row">
               <strong className="grow">{title}</strong>
               {part === "to"
@@ -166,24 +169,28 @@ function RowPanel({ card, at, apply, select, addRow }: Pick<Props, "card" | "app
               </>
             )}
           </div>
+          </div>
         );
       })}
 
+      <h2 className="section">Mentioned</h2>
       <div className="slot-block" onClick={() => select({ ...at, part: "extras" })}>
         <div className="row">
           <strong className="grow">Extras</strong>
-          <span className="hint">pictures and words</span>
+          <span className="hint">deer pushed in, a tech, a note</span>
         </div>
         <div className="row tight" style={{ marginTop: 6 }}>
           {step.extras.map((entry) => chip(entry, { ...at, part: "extras", item: entry.id }))}
         </div>
         <div className="row tight" style={{ marginTop: 6 }}>
-          {([["+ hunt box", box()], ["+ text", text("note")]] as [string, Item][]).map(([label, made]) => (
-            <button key={label} className="tiny" onClick={(e) => {
-              e.stopPropagation();
-              apply((c) => addItem(c, { ...at, part: "extras" }, made));
-            }}>{label}</button>
-          ))}
+          <button className="tiny" onClick={(e) => {
+            e.stopPropagation();
+            apply((c) => addItem(c, { ...at, part: "extras" }, count("2")));
+          }}>+ number</button>
+          <button className="tiny" onClick={(e) => {
+            e.stopPropagation();
+            apply((c) => addItem(c, { ...at, part: "extras" }, text("note")));
+          }}>+ text</button>
         </div>
       </div>
 
@@ -249,11 +256,6 @@ function ItemPanel({ selected, item, apply, select }: Pick<Props, "card" | "appl
           <label className="field">Words</label>
           <input className="wide" value={item.text} onChange={(e) => set({ text: e.target.value })} />
         </>
-      )}
-      {item.kind === "box" && (
-        <p className="hint">
-          Drag icons onto the box on the card, or select it and click one on the shelf.
-        </p>
       )}
       <div className="row" style={{ marginTop: 12 }}>
         <button onClick={() => apply((c) => moveItem(c, selected, -1))} title="Move left">←</button>

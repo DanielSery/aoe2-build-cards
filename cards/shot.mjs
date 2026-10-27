@@ -33,9 +33,33 @@ const title = await page.textContent(".canvas .card-head h1");
 check(title === "MAA + Tower", `opens on “${title}”`, `title was “${title}”`);
 check(await rows.count() === 9, "9 rows", `saw ${await rows.count()} rows`);
 
-const hints = await row(0).locator(".slot").evaluateAll((els) => els.map((e) => e.dataset.hint));
-check(hints.join("|") === "end|before|source",
-  "every row offers the three places", `row 1 showed ${hints.join("|")}`);
+/** Starts a drag from `source` and leaves it in the air: empty places are
+ *  drawn only once a drag is under way, so they cannot be aimed at before. */
+async function lift(source) {
+  await source.hover();
+  await page.mouse.down();
+  const box = await source.boundingBox();
+  await page.mouse.move(box.x + box.width / 2 + 12, box.y + box.height / 2 + 12, { steps: 3 });
+}
+
+/** Drags `source` onto a place that may only exist while dragging. */
+async function dragInto(source, target) {
+  await lift(source);
+  await target.hover();
+  await page.mouse.up();
+}
+
+// The militia row has neither a move nor extras. At rest only what it holds
+// is drawn; once a drag is under way, every place it could take is.
+const hintsOf = (n) => row(n).locator(".slot, .extras").evaluateAll((els) => els.map((e) => e.dataset.hint));
+const atRest = await hintsOf(6);
+await lift(page.locator(".palette .icon-btn").first());
+const dragging = await hintsOf(6);
+await page.mouse.move(5, 5);
+await page.mouse.up();
+check(atRest.join("|") === "end" && dragging.join("|") === "end|before|moved to|before|source|extras",
+  "empty places are drawn only while dragging",
+  `row 7 showed ${atRest.join("|")} at rest and ${dragging.join("|")} while dragging`);
 
 check(await page.locator(".canvas .card .step-count").count() === 0,
   "there is no number column", "a number column is still being drawn");
@@ -53,47 +77,43 @@ check(firstGap === 14, "the number sits one gap after the row number",
 // --- numbers carry their own value and the running total ------------------
 
 // 6 on sheep is 6 on sheep; 4 on wood is 4 on the wood line, not 10 of
-// anything; 12 on boar states its own total; a tower names no work, so it
-// carries none.
+// anything. All six off the sheep go to the hunt, so 6 new make it 12; 3 off
+// the hunt leave 9, and 5 more leave 4. "All" is a word and carries no
+// figure; a militia names no work, so it carries none either.
 const numbers = await page.$$eval(".canvas .card .countbox",
   (els) => els.map((e) => [e.querySelector("b")?.textContent, e.querySelector("i")?.textContent ?? null]));
-const wanted = [["6", "6"], ["4", "4"], ["12", "12"], ["3", "3"], ["3", "3"], ["5", null], ["3", null]];
+const wanted = [["6", "6"], ["4", "4"], ["6", "12"], ["All", null], ["3", "9"], ["5", "4"], ["3", null]];
 check(JSON.stringify(numbers) === JSON.stringify(wanted),
-  "each number totals its own work",
+  "each number totals its own work, and a move carries its villagers",
   `the numbers were ${JSON.stringify(numbers)}`);
 
-// A number in *source* is villagers leaving, so it comes off that work: six
-// were on the sheep, four walk away from them, two are left.
-await page.locator(".canvas .card .step").nth(2).locator(".slot--from").click();
-await page.locator(".palette .number-btn").nth(3).click();
-const leaving = await page.locator(".canvas .card .step").nth(2)
-  .locator(".slot--from .countbox").evaluate((e) =>
-    `${e.querySelector("b").textContent}/${e.querySelector("i")?.textContent}`);
+// Where moved villagers go needs no number: the source's says how many. Make
+// it 5 and the hunt keeps 7.
+await row(4).locator(".slot--from .countbox").click();
+await page.locator(".inspector label:has-text('Number') + input").fill("5");
+const leaving = await row(4).locator(".slot--from .countbox i").textContent();
 await page.click(".topbar button:has-text('Undo')");
-check(leaving === "4/2", "a number in source takes villagers away",
-  `the source number read ${leaving}, wanted 4/2`);
+check(leaving === "7", "a number in source takes villagers away",
+  `5 off the hunt's 12 left ${leaving}, wanted 7`);
 
-// Sheep and boar are both food but not the same work: with its stated total
-// cleared, 12 on boar after 6 on sheep is 12 on the hunt, not 18 of anything.
-await row(2).locator(".slot--to .countbox").click();
-await page.locator(".inspector label:has-text('Total on this work') + input").fill("");
-const hunt = await row(2).locator(".slot--to .countbox i").textContent();
-await page.click(".topbar button:has-text('Undo')");
-check(hunt === "12", "sheep and hunt are counted apart",
-  `12 on boar after 6 on sheep read ${hunt}, wanted 12`);
-
-// Counting villagers, a row wears every work's figure added up. "All" off the
-// sheep is no number but empties them, so the boar row is 12 on boar + 4 on wood.
+// Counting villagers, a row wears every work's figure added up. A move keeps
+// the total; the five sent to the tower go to no work the card counts.
 await page.click(".canvas .card-head");
 await page.locator(".inspector label:has-text('Row numbers count') + select").selectOption("villagers");
-await row(2).locator(".slot--from").click();
-await page.locator(".palette .number-btn:has-text('All')").click();
-const byVillagers = await rows.evaluateAll((els) => els.slice(0, 3).map((e) => e.querySelector(".step-no")?.textContent));
+const byVillagers = await rows.evaluateAll((els) => els.slice(0, 6).map((e) => e.querySelector(".step-no")?.textContent));
 await page.click(".topbar button:has-text('Undo')");
-await page.click(".topbar button:has-text('Undo')");
-check(JSON.stringify(byVillagers) === JSON.stringify(["6", "10", "16"]),
-  "row numbers can count villagers, and All empties a work",
-  `the first three rows were numbered ${JSON.stringify(byVillagers)}, wanted 6, 10, 16`);
+check(JSON.stringify(byVillagers) === JSON.stringify(["6", "10", "16", "16", "16", "11"]),
+  "row numbers can count villagers, and a move keeps the total",
+  `the first six rows were numbered ${JSON.stringify(byVillagers)}, wanted 6, 10, 16, 16, 16, 11`);
+
+// Three columns: every move starts at one x, and every row's extras end at one.
+const edgesOf = (rows, part, edge) => page.locator(`.export-copy .card ${rows}`).evaluateAll((els, [part, edge]) =>
+  els.map((e) => Math.round(e.querySelector(part).getBoundingClientRect()[edge])), [part, edge]);
+const moveLefts = await edgesOf(".step--moves", ".column--move .slot", "left");
+const extrasRights = await edgesOf(".step--extras", ".extras", "right");
+check(moveLefts.length === 4 && new Set(moveLefts).size === 1 && extrasRights.length === 2 && new Set(extrasRights).size === 1,
+  "moves and extras each form a column",
+  `moves started at ${moveLefts.join(", ")} and extras ended at ${extrasRights.join(", ")}`);
 
 // --- a caption must not move anything -------------------------------------
 
@@ -108,7 +128,7 @@ const heightOf = (n) => row(n).evaluate((e) => Math.round(e.getBoundingClientRec
 const cardHeight = () => page.locator(".canvas .card").evaluate(
   (e) => Math.round(e.getBoundingClientRect().height));
 const [wasRow, wasCard] = [await heightOf(5), await cardHeight()];
-await iconsIn(5, "to").first().click();
+await iconsIn(5, "moveTo").first().click();
 await page.fill('.inspector input[placeholder="e.g. 50"]', "140");
 const [nowRow, nowCard] = [await heightOf(5), await cardHeight()];
 check(nowRow === wasRow && nowCard === wasCard,
@@ -126,8 +146,8 @@ check(await iconsIn(0, "to").count() === before + 1,
 await page.click(".topbar button:has-text('Undo')");
 check(await iconsIn(0, "to").count() === before, "undo puts it back", "undo did not restore the row");
 
-await page.locator(".palette .icon-btn").first().dragTo(row(0).locator(".slot--from"));
-check(await iconsIn(0, "from").count() === 1,
+await dragInto(page.locator(".palette .icon-btn").first(), row(6).locator(".slot--from"));
+check(await iconsIn(6, "from").count() === 1,
   "an icon drags from the shelf onto a place", "the shelf drag landed nowhere");
 await page.click(".topbar button:has-text('Undo')");
 
@@ -363,7 +383,7 @@ const pair = await exportPdf("A4, two across");
 ok(`exported ${pair.name}`);
 const [left, right] = pair.pages[0]?.slices ?? [];
 check(pair.pages.length === 1 && near(pair.pages[0].size[0], 595.28) && near(pair.pages[0].size[1], 841.89)
-  && left && right && left.top === right.top && left.x < right.x,
+  && left && right && near(left.top, right.top) && left.x < right.x,
   "two cards side by side on one A4 page",
   `${pair.pages.length} pages: ${JSON.stringify(pair.pages)}`);
 check(widths(pair).size === 1 && [left, right].every((s) => s && s.from === 0 && near(s.to, 1)),

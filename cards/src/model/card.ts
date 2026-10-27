@@ -1,11 +1,14 @@
 /**
  * The document, and every edit that can be made to it.
  *
- * A row is a sentence about villagers, read right to left: they come **from**
- * somewhere, may do something **via** on the way, and end up **to** somewhere.
- * Only `to` is required, the arrows between them are drawn rather than placed,
- * and anything the row merely mentions — the hunt that is available, a note —
- * goes in `extras` at the far right.
+ * A row is three columns. The first says what the **new** villagers do, read
+ * right to left: where they end up (`to`) and what they do on the way (`via`).
+ * The second, the ones **moved** off other work: where they go (`moveTo`), what
+ * they do on the way (`moveVia`) and the work they were taken off (`from`) —
+ * the number is on the source, since everyone taken off it goes to the same
+ * place. The third, `extras`, is what the row merely mentions: the deer pushed
+ * in, a tech, a note. Only `to` is always there, and the arrows between places
+ * are drawn rather than placed.
  *
  * Everything on a row is an entity with an id: icons, numbers, notes. That is
  * what lets one thing be selected, dragged anywhere and deleted, rather than
@@ -32,9 +35,8 @@ export type IconItem = { kind: "icon"; id: string; icon: string; caption: string
  */
 export type CountItem = { kind: "count"; id: string; value: string; total: string };
 export type TextItem = { kind: "text"; id: string; text: string };
-export type BoxItem = { kind: "box"; id: string; items: (IconItem | TextItem)[] };
 
-export type Item = IconItem | CountItem | TextItem | BoxItem;
+export type Item = IconItem | CountItem | TextItem;
 /** What one of the three places can hold. A note belongs to the place as its
  *  words, and the arrows between places are drawn rather than placed. */
 export type PlaceItem = IconItem | CountItem;
@@ -42,12 +44,14 @@ export type PlaceItem = IconItem | CountItem;
 export type Slot = { items: PlaceItem[]; label: string };
 
 /** The named parts of a row. */
-export type Part = "to" | "via" | "from" | "extras";
+export type Part = "to" | "via" | "moveTo" | "moveVia" | "from" | "extras";
 
 export type Step = {
   id: string;
   to: Slot;
   via: Slot | null;
+  moveTo: Slot | null;
+  moveVia: Slot | null;
   from: Slot | null;
   extras: Item[];
 };
@@ -74,7 +78,7 @@ export type Card = {
  *  while dragging. Absent it means "before", which is where something arriving
  *  from outside goes. */
 export type Where = {
-  section: string; step?: string; part?: Part; item?: string; inBox?: string;
+  section: string; step?: string; part?: Part; item?: string;
   side?: "before" | "after";
 };
 
@@ -88,10 +92,15 @@ export const TONES: [Tone, string][] = [
 ];
 
 export const SLOTS: [Exclude<Part, "extras">, string, string][] = [
-  ["to", "End", "where these villagers end up"],
+  ["to", "End", "where new villagers end up"],
   ["via", "Before", "what they do on the way"],
-  ["from", "Source", "where they were"],
+  ["moveTo", "Moved to", "where villagers taken off other work go"],
+  ["moveVia", "Moved via", "what they do on the way"],
+  ["from", "Source", "the work they were taken off"],
 ];
+
+/** The places of the moved villagers, the right-hand half of a row. */
+export const MOVE_PARTS = ["moveTo", "moveVia", "from"] as const;
 
 const id = () => crypto.randomUUID();
 
@@ -99,12 +108,14 @@ export const icon = (key: string): IconItem => ({ kind: "icon", id: id(), icon: 
 export const count = (value = "1", total = ""): CountItem =>
   ({ kind: "count", id: id(), value, total });
 export const text = (value = "text"): TextItem => ({ kind: "text", id: id(), text: value });
-export const box = (items: BoxItem["items"] = []): BoxItem => ({ kind: "box", id: id(), items });
 
 export const newSlot = (items: PlaceItem[] = [], label = ""): Slot => ({ items, label });
 
 export const newStep = (to: Slot = newSlot()): Step =>
-  ({ id: id(), to, via: null, from: null, extras: [] });
+  ({ id: id(), to, via: null, moveTo: null, moveVia: null, from: null, extras: [] });
+
+export const movesAnyone = (step: Step): boolean =>
+  MOVE_PARTS.some((part) => !slotIsEmpty(step[part]));
 
 /** A phase starts empty. A card is allowed to have no rows at all — a set of
  *  named bands waiting to be filled is a real thing to want, and a blank row
@@ -136,10 +147,7 @@ export const newCard = (name = "Untitled build"): Card => ({
   updated: Date.now(),
 });
 
-const cloneItem = <T extends Item>(item: T): T =>
-  (item.kind === "box"
-    ? { ...item, id: id(), items: item.items.map((c) => ({ ...c, id: id() })) }
-    : { ...item, id: id() }) as T;
+const cloneItem = <T extends Item>(item: T): T => ({ ...item, id: id() });
 
 const cloneSlot = (slot: Slot | null): Slot | null =>
   slot && { ...slot, items: slot.items.map(cloneItem) };
@@ -149,6 +157,8 @@ const cloneStep = (step: Step): Step => ({
   id: id(),
   to: cloneSlot(step.to)!,
   via: cloneSlot(step.via),
+  moveTo: cloneSlot(step.moveTo),
+  moveVia: cloneSlot(step.moveVia),
   from: cloneSlot(step.from),
   extras: step.extras.map(cloneItem),
 });
@@ -270,7 +280,7 @@ export function mapSlot(card: Card, at: Where, f: (slot: Slot) => Slot): Card {
 /** Turning a place on gives it an empty one; turning it off removes it, and
  *  with it the arrow the card was drawing into it. `to` is the row itself and
  *  is only ever emptied. */
-export function toggleSlot(card: Card, at: Where, part: "to" | "via" | "from", on: boolean): Card {
+export function toggleSlot(card: Card, at: Where, part: Exclude<Part, "extras">, on: boolean): Card {
   return mapStep(card, at, (step) =>
     part === "to"
       ? (on ? step : { ...step, to: newSlot() })
@@ -282,9 +292,6 @@ export function toggleSlot(card: Card, at: Where, part: "to" | "via" | "from", o
 const isIcon = (item: Item): item is IconItem => item.kind === "icon";
 const isCount = (item: Item): item is CountItem => item.kind === "count";
 const isPlaceItem = (item: Item): item is PlaceItem => isIcon(item) || isCount(item);
-/** A box holds what extras hold: pictures and words, and no boxes. */
-const nests = (item: Item): item is BoxItem["items"][number] =>
-  isIcon(item) || item.kind === "text";
 
 type Bucket = { read: (step: Step) => Item[]; write: (step: Step, items: Item[]) => Step };
 
@@ -303,15 +310,15 @@ function bucketFor(part: Part): Bucket {
  * What a part will take. Dropping anything else on it is a no-op rather than
  * a silent conversion.
  *
- * Extras are pictures and words — what the row *mentions*. A number there
- * would be a villager count nothing on the row accounts for.
+ * Extras take anything — what the row *mentions*, "2 deer" included. A
+ * number there counts what it stands beside, never villagers, so it carries
+ * no figure.
  */
 export function accepts(part: Part, item: Item): boolean {
-  if (part === "extras") return item.kind !== "count";
-  return isPlaceItem(item);
+  return part === "extras" || isPlaceItem(item);
 }
 
-const PARTS: Part[] = ["to", "via", "from", "extras"];
+const PARTS: Part[] = ["to", "via", "moveTo", "moveVia", "from", "extras"];
 
 const spliced = (items: Item[], index: number, item: Item): Item[] => {
   const out = items.slice();
@@ -324,18 +331,12 @@ function insertAt(card: Card, at: Where, item: Item, index: number): Card {
   const part = at.part ?? "to";
   if (!accepts(part, item)) return card;
   return mapStep(card, at, (step) => {
-    if (at.inBox && part === "extras" && nests(item))
-      return { ...step, extras: step.extras.map((existing) =>
-        existing.id === at.inBox && existing.kind === "box"
-          ? { ...existing, items: spliced(existing.items, index, item) as BoxItem["items"] }
-          : existing) };
     const bucket = bucketFor(part);
     return bucket.write(step, spliced(bucket.read(step), index, item));
   });
 }
 
-/** Where `at.item` sits inside whatever holds it — a part, or a box within
- *  one. -1 when the part was named without an item. */
+/** Where `at.item` sits in its part. -1 when the part was named without an item. */
 function indexOfItem(card: Card, at: Where): number {
   const step = findStep(card, at);
   if (!step || !at.item) return -1;
@@ -343,8 +344,6 @@ function indexOfItem(card: Card, at: Where): number {
     const items = bucketFor(part).read(step);
     const here = items.findIndex((i) => i.id === at.item);
     if (here >= 0) return here;
-    const container = items.find((i) => i.kind === "box" && i.items.some((c) => c.id === at.item));
-    if (container?.kind === "box") return container.items.findIndex((c) => c.id === at.item);
   }
   return -1;
 }
@@ -362,7 +361,7 @@ export const addItem = (card: Card, at: Where, item: Item): Card =>
   insertAt(card, at, item, landingIndex(card, at));
 
 const sameList = (a: Where, b: Where) =>
-  a.step === b.step && (a.part ?? "to") === (b.part ?? "to") && a.inBox === b.inBox;
+  a.step === b.step && (a.part ?? "to") === (b.part ?? "to");
 
 function overItems(step: Step, itemId: string, f: (items: Item[], index: number) => Item[]): Step {
   for (const part of PARTS) {
@@ -370,14 +369,6 @@ function overItems(step: Step, itemId: string, f: (items: Item[], index: number)
     const items = bucket.read(step);
     const index = items.findIndex((i) => i.id === itemId);
     if (index >= 0) return bucket.write(step, f(items, index));
-    const boxAt = items.findIndex((i) => i.kind === "box" && i.items.some((c) => c.id === itemId));
-    if (boxAt >= 0) {
-      const container = items[boxAt] as BoxItem;
-      const inner = container.items.findIndex((c) => c.id === itemId);
-      const next = items.slice();
-      next[boxAt] = { ...container, items: f(container.items, inner) as BoxItem["items"] };
-      return bucket.write(step, next);
-    }
   }
   return step;
 }
@@ -398,7 +389,7 @@ export const dropItem = (card: Card, at: Where): Card =>
 
 /**
  * Move an item to where the caret said, within one place or across places,
- * rows and boxes.
+ * rows.
  *
  * The landing slot is read off the card *before* the item is lifted out,
  * because that is the card the caret was drawn against. Lifting it out then
@@ -420,13 +411,8 @@ export function findItem(card: Card, at: Where): Item | null {
   const step = findStep(card, at);
   if (!step) return null;
   for (const part of PARTS)
-    for (const item of bucketFor(part).read(step)) {
+    for (const item of bucketFor(part).read(step))
       if (item.id === at.item) return item;
-      if (item.kind === "box") {
-        const child = item.items.find((c) => c.id === at.item);
-        if (child) return child;
-      }
-    }
   return null;
 }
 
@@ -469,10 +455,12 @@ export const ALL = "All";
  * berries and "6" under sheep are both food, and the card is about who is on
  * which.
  *
- * A number in *source* is villagers **leaving**, so it comes off that work;
- * in *before* and *end* they are arriving, so it goes on. Which is why the
- * places are read in the order the villagers move — source, before, end — and
- * not in the order they are drawn. **All** in a source empties the work.
+ * A number in *source* is villagers **leaving**, so it comes off that work —
+ * **All** empties it — and the same villagers arrive wherever they were moved
+ * to, which therefore needs no number of its own. A number there anyway is
+ * read as the arrivals, as a card written before the two halves did. Numbers
+ * anywhere else are new villagers arriving. The moved half is counted first,
+ * so a number on the left shows its work once the whole row is done.
  *
  * Counted up by default, and *set* wherever a number states its total
  * outright. A number whose place names no work — a tower, a militia, a tech —
@@ -486,27 +474,31 @@ function tally(card: Card, after?: (step: Step, villagers: number) => void): Rec
   const out: Record<string, string> = {};
   const running: Partial<Record<Job, number>> = {};
 
-  const note = (item: CountItem, job: Job | null, leaving: boolean) => {
-    if (!job) return;
+  /** Notes one number and says how many villagers it moved. */
+  const note = (item: CountItem, job: Job | null, leaving: boolean): number => {
+    if (!job) return 0;
+    const before = running[job] ?? 0;
     const stated = Number.parseInt(item.total, 10);
-    if (Number.isFinite(stated)) running[job] = stated;
-    else if (leaving && item.value.trim().toLowerCase() === ALL.toLowerCase()) running[job] = 0;
-    else {
-      const value = Number.parseInt(item.value, 10);
-      const moved = Number.isFinite(value) ? value : 0;
-      running[job] = (running[job] ?? 0) + (leaving ? -moved : moved);
-    }
+    const value = Number.parseInt(item.value, 10);
+    const all = leaving && item.value.trim().toLowerCase() === ALL.toLowerCase();
+    const moved = all ? before : Number.isFinite(value) ? value : 0;
+    running[job] = Number.isFinite(stated) ? stated : before + (leaving ? -moved : moved);
     out[item.id] = String(running[job]);
+    return moved;
   };
+  const counts = (slot: Slot | null) => (slot ? slot.items.filter(isCount) : []);
 
   for (const section of card.sections)
     for (const step of section.steps) {
-      for (const part of ["from", "via", "to"] as const) {
-        const slot = step[part];
-        if (!slot) continue;
-        const job = jobOf(slot.items);
-        for (const item of slot.items) if (isCount(item)) note(item, job, part === "from");
-      }
+      const source = jobOf(step.from?.items ?? []);
+      const moved = counts(step.from).reduce((sum, item) => sum + note(item, source, true), 0);
+      for (const item of counts(step.moveVia)) note(item, jobOf(step.moveVia!.items), false);
+      const landing = jobOf(step.moveTo?.items ?? []);
+      if (counts(step.moveTo).length)
+        for (const item of counts(step.moveTo)) note(item, landing, false);
+      else if (landing && moved) running[landing] = (running[landing] ?? 0) + moved;
+      for (const part of ["via", "to"] as const)
+        for (const item of counts(step[part])) note(item, jobOf(step[part]!.items), false);
       after?.(step, Object.values(running).reduce((sum, n) => sum + (n ?? 0), 0));
     }
   return out;

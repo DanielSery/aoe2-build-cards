@@ -6,19 +6,23 @@
  * an error: the card is drawn, not validated, so a missing `to` is a crash in
  * the middle of a render and the whole app goes with it.
  *
- * Three shapes so far, and all of them still open:
+ * Five shapes so far, and all of them still open:
  *   1. a row was a flat line of items, with the arrows placed by hand;
  *   2. three places, each with a `count` string and an `icons` list;
  *   3. three places of items, with numbers as entities like anything else;
  *      arrows are drawn rather than placed, so that kind no longer exists.
  *   4. no number column: a row's number is simply the first thing in the
  *      place it is about.
+ *   5. two halves: new villagers on the left, the ones moved off other work
+ *      on the right. A row of shapes 1-4 with a source was a move, so it
+ *      becomes the right half whole, numbers and all -- a number on where the
+ *      moved villagers go is read as the arrivals, which is what it meant.
  * Retired icon keys are carried across too -- see `RENAMED`.
  * The hand-placed arrows are what says where the places divide, so carrying
  * (1) forward is exact rather than a guess.
  */
 
-import type { Card, CountItem, IconItem, Item, PlaceItem, Section, Slot, Step, Tone } from "./card";
+import type { Card, CountItem, Item, PlaceItem, Section, Slot, Step, Tone } from "./card";
 import { TONES, count, newSlot, newStep } from "./card";
 
 const TONE_KEYS = new Set(TONES.map(([tone]) => tone));
@@ -55,22 +59,22 @@ function item(raw: unknown): Item | null {
       return { kind: "count", id: id(value.id), value: str(value.value), total: str(value.total) };
     case "text":
       return { kind: "text", id: id(value.id), text: str(value.text) };
-    case "box":
-      return {
-        kind: "box",
-        id: id(value.id),
-        items: (Array.isArray(value.items) ? value.items : [])
-          .map(item)
-          .filter((child): child is IconItem | { kind: "text"; id: string; text: string } =>
-            child !== null && (child.kind === "icon" || child.kind === "text")),
-      };
     default:
       return null;
   }
 }
 
-const items = (raw: unknown): Item[] =>
-  (Array.isArray(raw) ? raw : []).map(item).filter((i): i is Item => i !== null);
+/** One stored item, or what was in it: the hunt box is gone, so a box saved
+ *  before is opened as its contents, in its place. */
+function unboxed(raw: unknown): Item[] {
+  const value = raw as Loose;
+  if (value && typeof value === "object" && value.kind === "box")
+    return (Array.isArray(value.items) ? value.items : []).flatMap(unboxed);
+  const made = item(raw);
+  return made ? [made] : [];
+}
+
+const items = (raw: unknown): Item[] => (Array.isArray(raw) ? raw : []).flatMap(unboxed);
 
 const placeItems = (raw: unknown): PlaceItem[] =>
   items(raw).filter((i): i is PlaceItem => i.kind === "icon" || i.kind === "count");
@@ -97,12 +101,13 @@ function fromFlatList(value: Loose): Step {
     // Shape 1's hand-placed arrows are gone as an item kind, but they are
     // still what said where one place ended and the next began.
     if (entry.kind === "arrow") { places.push(newSlot()); continue; }
+    // A box was a group of things the row mentioned: its contents go there.
+    if (entry.kind === "box") { spilt.push(...unboxed(entry)); continue; }
     const made = item(entry);
     if (!made) continue;
     const here = places[places.length - 1];
     if (made.kind === "icon" || made.kind === "count") here.items.push(made);
-    else if (made.kind === "text") here.label = here.label ? `${here.label} ${made.text}` : made.text;
-    else spilt.push(made);
+    else here.label = here.label ? `${here.label} ${made.text}` : made.text;
   }
 
   const step = newStep(places[0]);
@@ -113,6 +118,7 @@ function fromFlatList(value: Loose): Step {
   if (lead) step.to = { ...step.to, items: [lead, ...step.to.items] };
   step.via = places[1] ?? null;
   step.from = places[2] ?? null;
+  moved(step);
   // A row with more than three places, and anything a place cannot hold, goes
   // where the card already puts what it only mentions.
   // Extras hold pictures and words: a number that had drifted out there has
@@ -137,13 +143,26 @@ function step(raw: unknown): Step {
     return fromFlatList(value);
   const lead = leadCount(value);
   const to = slot(value.to);
-  return {
+  const made: Step = {
     id: id(value.id),
     to: lead ? { ...to, items: [lead, ...to.items] } : to,
     via: value.via ? slot(value.via) : null,
+    moveTo: value.moveTo ? slot(value.moveTo) : null,
+    moveVia: value.moveVia ? slot(value.moveVia) : null,
     from: value.from ? slot(value.from) : null,
-    extras: items(value.extras).filter((entry) => entry.kind !== "count"),
+    extras: items(value.extras),
   };
+  if (!("moveTo" in value)) moved(made);
+  return made;
+}
+
+/** Shapes 1-4: a row with a source moved villagers, so all of it is the moved half. */
+function moved(step: Step): void {
+  if (!step.from) return;
+  step.moveTo = step.to;
+  step.moveVia = step.via;
+  step.to = newSlot();
+  step.via = null;
 }
 
 function section(raw: unknown): Section {

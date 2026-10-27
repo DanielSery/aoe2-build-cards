@@ -6,13 +6,16 @@
  * left is exactly what exports.
  */
 
+import { useLayoutEffect, useRef } from "react";
 import type { JSX } from "react";
 import type { Card, Item, Part, Section, Slot, Step, Where } from "../model/card";
-import { newSlot, numbering, slotIsEmpty, totals } from "../model/card";
+import { movesAnyone, newSlot, numbering, slotIsEmpty, totals } from "../model/card";
 import { iconLabel, iconUrl } from "../icons";
 
 export type Edit = {
   selected: Where | null;
+  /** Something is being dragged, so the empty places are drawn to drop on. */
+  dragging: boolean;
   select: (where: Where | null) => void;
   relocate: (from: Where, to: Where) => void;
   relocateStep: (from: Where, to: Where) => void;
@@ -132,22 +135,10 @@ function ItemView({ item, where, edit, total }: {
     }
     case "text":
       return <span {...common}><span className="phrase">{item.text}</span></span>;
-    case "box":
-      return (
-        <span {...common}>
-          <span className="boxed">
-            {item.items.map((child) => (
-              <ItemView key={child.id} item={child} edit={edit}
-                        where={{ ...where, item: child.id, inBox: item.id }} />
-            ))}
-            {edit && item.items.length === 0 && <span className="boxed-empty">empty box</span>}
-          </span>
-        </span>
-      );
   }
 }
 
-/** One of the three places. */
+/** One of the places. */
 function SlotView({ slot, part, hint, step, section, edit, sums }: {
   slot: Slot; part: Part; hint: string; step: Step; section: Section;
   edit?: Edit; sums: Record<string, string>;
@@ -168,6 +159,38 @@ function SlotView({ slot, part, hint, step, section, edit, sums }: {
   );
 }
 
+/**
+ * Whether an empty place is drawn. Only while something is being dragged — it
+ * is somewhere to drop — or while it is the selection, so a click on the
+ * shelf has somewhere visible to land; and the end of a selected row that has
+ * nothing yet, or a new row would be an empty strip.
+ */
+function offered(edit: Edit | undefined, step: Step, section: Section, part: Part): boolean {
+  if (!edit) return false;
+  if (edit.dragging || same(edit.selected, { section: section.id, step: step.id, part })) return true;
+  return part === "to" && same(edit.selected, { section: section.id, step: step.id });
+}
+
+function Chain({ places, step, section, edit, sums }: {
+  places: [Part, Slot | null, string][]; step: Step; section: Section;
+  edit?: Edit; sums: Record<string, string>;
+}) {
+  const shown = places.filter(([part, slot]) => !slotIsEmpty(slot) || offered(edit, step, section, part));
+  return (
+    <span className="chain">
+      {shown.map(([part, slot, hint], index) => (
+        <span className="link" key={part}>
+          {index > 0 && <span className="arrow">←</span>}
+          <SlotView slot={slot ?? newSlot()} part={part} hint={hint} step={step}
+                    section={section} edit={edit} sums={sums} />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** A row: the new villagers, the ones moved off other work, and what the row
+ *  only mentions — three columns. */
 function StepRow({ step, section, number, edit, sums }: {
   step: Step; section: Section; number?: number;
   edit?: Edit; sums: Record<string, string>;
@@ -175,18 +198,12 @@ function StepRow({ step, section, number, edit, sums }: {
   const where: Where = { section: section.id, step: step.id };
   const selected = same(edit?.selected ?? null, where);
   const extrasAt: Where = { ...where, part: "extras" };
-  const chain: [Part, Slot | null, string][] = [
-    ["to", step.to, "end"],
-    ["via", step.via, "before"],
-    ["from", step.from, "source"],
-  ];
-  // While editing, all three places are on the row whether or not they hold
-  // anything: the empty ones are where you click to fill them, and they are
-  // the only explanation of the format the card ever gives.
-  const shown = chain.filter(([, slot]) => edit || !slotIsEmpty(slot));
+  const moves = movesAnyone(step);
+  const mentions = step.extras.length > 0;
+  const columns = [moves && "step--moves", mentions && "step--extras", selected && "is-selected"];
 
   return (
-    <div className={`step${selected ? " is-selected" : ""}`}
+    <div className={["step", ...columns].filter(Boolean).join(" ")}
          onClick={edit && ((event) => { event.stopPropagation(); edit.select(where); })}
          {...dropHandlers(edit, where, [DRAG_ROW])}>
       {edit && (
@@ -198,33 +215,57 @@ function StepRow({ step, section, number, edit, sums }: {
               }}>⠿</span>
       )}
       {section.numbered && <span className="step-no">{number}</span>}
-      <span className="chain">
-        {shown.map(([part, slot, hint], index) => (
-          <span className="link" key={part}>
-            {index > 0 && <span className="arrow">←</span>}
-            <SlotView slot={slot ?? newSlot()} part={part} hint={hint} step={step}
-                      section={section} edit={edit} sums={sums} />
-          </span>
-        ))}
+      <span className="column column--new">
+        <Chain step={step} section={section} edit={edit} sums={sums}
+               places={[["to", step.to, "end"], ["via", step.via, "before"]]} />
       </span>
-      <span className={`extras${same(edit?.selected ?? null, extrasAt) ? " is-selected" : ""}`}
+      <span className="column column--move">
+        <Chain step={step} section={section} edit={edit} sums={sums}
+               places={[["moveTo", step.moveTo, "moved to"], ["moveVia", step.moveVia, "before"],
+                        ["from", step.from, "source"]]} />
+      </span>
+      {(mentions || offered(edit, step, section, "extras")) &&
+        <span className={`extras${same(edit?.selected ?? null, extrasAt) ? " is-selected" : ""}`}
             data-hint="extras"
             onClick={edit && ((event) => { event.stopPropagation(); edit.select(extrasAt); })}
-            {...dropHandlers(edit, extrasAt, [DRAG_ITEM, DRAG_ICON])}>
+            {...dropHandlers(edit, extrasAt, [DRAG_ITEM, DRAG_ICON, DRAG_NUMBER])}>
         {step.extras.map((item) => (
           <ItemView key={item.id} item={item} edit={edit} total={sums[item.id]}
                     where={{ ...extrasAt, item: item.id }} />
         ))}
-      </span>
+      </span>}
     </div>
   );
+}
+
+/**
+ * The moves line up down the card: every row with one has its new villagers'
+ * column as wide as the widest such column on the card. A row with no move is
+ * left out of the measure — an age-up row's long label would otherwise push
+ * every move on the card to the right.
+ *
+ * Measured rather than laid out as a grid, because the rows sit in separate
+ * phase boxes; set as a variable on the card itself, so the off-screen copy
+ * the PNG is taken from measures and carries its own.
+ */
+function useColumns(card: Card) {
+  const node = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = node.current;
+    if (!root) return;
+    const widths = [...root.querySelectorAll<HTMLElement>(".step--moves > .column--new > .chain")]
+      .map((chain) => chain.offsetWidth);
+    root.style.setProperty("--new-column", widths.length ? `${Math.max(...widths)}px` : "auto");
+  }, [card]);
+  return node;
 }
 
 export function CardView({ card, edit }: { card: Card; edit?: Edit }): JSX.Element {
   const numbers = numbering(card);
   const sums = card.totals ? totals(card) : {};
+  const node = useColumns(card);
   return (
-    <div className={`card${edit ? " card--edit" : ""}`}
+    <div ref={node} className={`card${edit ? " card--edit" : ""}`}
          onClick={edit && (() => edit.select(null))}>
       <header className="card-head">
         <h1>{card.title || card.name}</h1>

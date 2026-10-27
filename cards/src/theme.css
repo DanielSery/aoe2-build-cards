@@ -221,9 +221,17 @@ input.wide, select.wide, textarea.wide { width: 100%; }
 /* No wrapping. A chain that can wrap lays out differently in a clone than it
  * does on screen, and the export is a clone. */
 .chain { display: flex; align-items: center; gap: 12px; }
+/* The three columns: new villagers, moves, extras. The new villagers are kept
+ * as wide as the widest on the card wherever a move follows (`useColumns`), so
+ * the moves line up; the extras keep to the right edge. Lining the extras up
+ * on their left as well would add up the widest of every column, and a card
+ * with one long move and one long left half would run off its own edge. */
+.column { display: flex; flex: none; }
+.step--moves > .column--new, .card--edit .step > .column--new { min-width: var(--new-column, auto); }
+.column--move { margin-left: 22px; }
 .link { display: flex; align-items: center; gap: 12px; }
 .slot { display: flex; align-items: center; gap: 10px; }
-.extras { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.extras { display: flex; align-items: center; gap: 10px; margin-left: auto; padding-left: 12px; }
 
 .item { display: inline-flex; align-items: center; position: relative; }
 .tile { width: 64px; height: 64px; border: 3px solid #111318; border-radius: 5px;
@@ -238,9 +246,6 @@ input.wide, select.wide, textarea.wide { width: 100%; }
        pointer-events: none; text-shadow: 0 0 3px rgba(255, 255, 255, 0.9); }
 .arrow { font-size: 40px; font-weight: 900; line-height: 1; }
 .phrase { font-size: 26px; font-weight: 800; white-space: pre-wrap; }
-.boxed { display: inline-flex; align-items: center; gap: 10px; padding: 7px 11px;
-         border: 2px solid #111318; border-radius: 9px; background: rgba(255, 255, 255, 0.34); }
-.boxed-empty { font-size: 14px; font-weight: 700; color: #555; padding: 20px 6px; }
 
 /* Editing affordances. Everything here is scoped to `.card--edit`, so the
  * export — which renders without it — carries none of them. */

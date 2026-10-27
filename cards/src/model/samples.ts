@@ -2,13 +2,13 @@
  * The card the editor opens with, so the format explains itself.
  *
  * A transcription of a well-known men-at-arms opening rather than advice: it
- * is here because it uses all three places on a row, a caption, a hunt box, a
- * labelled row, numbers that are counted up and one that states its total
- * outright.
+ * is here because it uses both halves of a row — new villagers, and villagers
+ * moved off other work — a caption, a labelled row, numbers that
+ * are counted up, and All.
  */
 
 import type { Card, Step } from "./card";
-import { box, count, icon, newSlot, newStep } from "./card";
+import { ALL, count, icon, newSlot, newStep } from "./card";
 
 const row = (step: Step, rest: Partial<Step>): Step => ({ ...step, ...rest });
 
@@ -32,16 +32,16 @@ export function sampleCard(): Card {
             extras: [icon("building-house"), icon("building-house")],
           }),
           row(newStep(newSlot([count("4"), icon("resource-wood"), icon("tech-double-bit-axe")])), {
-            extras: [box([icon("gaia-deer"), icon("gaia-deer"), icon("gaia-boar")])],
+            extras: [icon("gaia-deer"), icon("gaia-deer"), icon("gaia-boar")],
           }),
-          // The one number the card states outright: twelve on food, not the
-          // six on sheep plus twelve more.
-          row(newStep(newSlot([count("12", "12"), icon("gaia-boar")])), {
-            from: newSlot([icon("gaia-sheep")]),
+          // Twelve on the hunt: all six off the sheep, and six new.
+          row(newStep(newSlot([count("6"), icon("gaia-boar")])), {
+            moveTo: newSlot([icon("gaia-boar")]),
+            from: newSlot([count(ALL), icon("gaia-sheep")]),
           }),
-          row(newStep(newSlot([icon("resource-wood")])), {
+          row(newStep(newSlot([icon("building-barracks")])), {
+            moveTo: newSlot([icon("resource-wood")]),
             from: newSlot([icon("building-house")]),
-            extras: [icon("building-barracks"), icon("building-house"), icon("resource-wood")],
           }),
         ],
       },
@@ -51,14 +51,15 @@ export function sampleCard(): Card {
         tone: "transition",
         numbered: true,
         steps: [
-          row(newStep(newSlot([count("3"), icon("resource-stone")])), {
-            via: newSlot([count("3"), { ...icon("resource-gold"), caption: "50" }]),
-            from: newSlot([icon("gaia-boar")]),
+          row(newStep(), {
+            moveTo: newSlot([icon("resource-stone")]),
+            moveVia: newSlot([{ ...icon("resource-gold"), caption: "50" }]),
+            from: newSlot([count("3"), icon("gaia-boar")]),
           }),
-          // A tower and a militia name no resource, so these two numbers carry
-          // no total at all rather than a meaningless one.
-          row(newStep(newSlot([count("5"), icon("building-watch_tower")])), {
-            from: newSlot([icon("gaia-boar")]),
+          // A tower names no work: the five come off the hunt and into no figure.
+          row(newStep(), {
+            moveTo: newSlot([icon("building-watch_tower")]),
+            from: newSlot([count("5"), icon("gaia-boar")]),
           }),
           newStep(newSlot([count("3"), icon("unit-militia")])),
         ],

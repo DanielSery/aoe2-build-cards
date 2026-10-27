@@ -16,7 +16,7 @@ works.
 
 | Path | Owns |
 |---|---|
-| `src/model/card.ts` | the document — phases, rows, the three places — and every edit as a pure function |
+| `src/model/card.ts` | the document — phases, rows, a row's three columns — and every edit as a pure function |
 | `src/model/jobs.ts` | which work an icon is about. The only game knowledge in the app |
 | `src/model/library.ts` | the library: this browser's local storage, and the JSON in and out |
 | `src/model/samples.ts` | the card it opens with, which is what explains the format |
@@ -29,12 +29,35 @@ works.
 | `src/editor/` | the shelf, the row form, the library panel, *Analyze game…* and its finder, and where an added icon lands |
 | `src/App.tsx` | state, undo, the three panes, the off-screen export copy |
 
-**A row is a sentence, not a canvas.** It has three places read right to left
-— `from` (*source*) → `via` (*before*) → `to` (*end*) — plus `extras` for what
-it only mentions. The arrows are *drawn because the next place exists*, never
-placed by hand; a place takes icons and numbers and nothing else; and `extras`
-takes pictures and words and neither of those. The first version let you drop
-anything anywhere in a flat list, and it was unusable.
+**A row is three columns, not a canvas.** First the **new** villagers:
+`via` (*before*) → `to` (*end*). Then the ones **moved** off other work:
+`from` (*source*) → `moveVia` → `moveTo`, each read right to left. Last the
+`extras`, what the row only mentions. The arrows are *drawn because the next
+place exists*, never placed by hand; a place takes icons and numbers and
+nothing else; and `extras` take anything — a number there ("2 deer") counts
+what it stands beside, never villagers, so it carries no figure. The first
+version let you drop anything anywhere in a flat list, and it was unusable;
+the next had one sentence a row, and "4 hunt ← 3 sheep" — three off the
+sheep and one new besides — was a puzzle a card should not set. Now that is
+"1 hunt" and "hunt ← 3 sheep". (A brief version allowed a move *or* extras on
+a row, for room; three columns replaced it.)
+
+**The moves are a column; the extras keep to the right edge.** Every row with
+a move has its new villagers' column as wide as the widest such column on the
+card (`CardView.useColumns`, a CSS variable on the card itself, so the
+off-screen copy measures its own). A row with no move is left out of the
+measure, or one age-up label would push every move on the card to the right.
+The extras are not lined up on their left as well: that adds up the widest of
+every column, and one long move plus one long left half ran a card off its own
+edge. Measured rather than a CSS grid, because the rows sit in separate phase
+boxes.
+
+**An empty place is drawn only while something is being dragged** — or when
+it is the selection, or the end of a selected row that holds nothing, so a
+click on the shelf has somewhere visible to land. `App` tracks the drag in the
+capture phase, since every drop target stops propagation, and ends it a turn
+*after* a drop: ended at once, React re-renders before the drop reaches the
+empty place's own handler, the place is gone, and the drop lands nowhere.
 
 **A number has no column.** It is the first thing in the place it is about,
 like any other item. The column it used to have was a fifth `Part` that took
@@ -108,12 +131,13 @@ Four more rules are easy to break:
   imported card's last Dark Age row can read one under the age-up's "at N
   vils", which counts every villager trained. An unnumbered phase stays
   unnumbered either way.
-- **A number in `from` is villagers leaving, so it subtracts** — and that is
-  why the places are counted `from` → `via` → `to`, the order the villagers
-  move, rather than the order they are drawn. Count them left to right and a
-  row that states its own total has that total overwritten by the source it
-  came out of. `via` still adds: the row says they are there, and it is the
-  next row's `from` that says they left.
+- **A number in `from` is villagers leaving, and they arrive at `moveTo`** —
+  which is why `moveTo` needs no number of its own; **All** moves the source's
+  whole figure. A number on `moveTo` anyway is read as the arrivals, which is
+  what an older card's one-sentence rows meant by it. The moved half is
+  counted before the new one, so a number on the left shows its work once the
+  whole row is done: "1 hunt" beside "hunt ← 3 sheep" reads 4 under the 1 if
+  the hunt was empty.
 - **Wood is the resource or a straggler, and those are two icons.** A build
   order means different things by them, and each has its own figure. The wood line,
   gold mine and stone mine icons were dropped for the resource icons
@@ -315,18 +339,27 @@ and `npm run preview` proxy `/api` to it.
   mind, a gather point left at once — is drawn going straight to where they
   went next, and a detour back to the same work is no move at all. Over 88
   cards that drops about 3% of villager steps and 1.4% of rows.
-- **A row says how many leave and how many arrive.** `from` carries the
-  villagers taken off the source and `to` everyone who ends up there, so
-  "4 hunt ← 3 sheep" is three off the sheep and one more besides. A new
-  villager reaching the same place within `MERGE` seconds of a move is folded
-  into it, which makes the lure and the crew that follows it one row; one
-  sent where the row before it went joins that row however long after, so one
-  villager off the sheep building the mill and the next four sent to the
-  berries are "5 berries ← mill ← 1 sheep" and not two rows. Everyone left on
-  a work leaving is **All** rather than a number, and `totals()` empties the
-  work for it. The card draws no figure under a word (`CardView`,
-  `countbox--word`), and draws the word quieter than a number: the total is
-  there for the rows after it.
+- **A row's new villagers are the first column, its moved ones the second.**
+  Three off the sheep and one new to the hunt is "1 hunt" and
+  "hunt ← 3 sheep" on one row, and so are new villagers to one place and a move
+  to another at the same time — "2 wood", "boar ← 2 sheep", "2 deer" — unless
+  the new ones go to the move's source or destination, where counting the move
+  first would be the wrong order (`_paired`). A move joins the latest move row
+  of the phase when it is the same move, however long after, so "farm ← 1
+  sheep" and then "farm ← 2 sheep" are "farm ← 3 sheep". A new villager reaching the same place within
+  `MERGE` seconds of a move is folded into it, which makes the lure and the
+  crew that follows it one row; one sent where the row before it went joins
+  that row however long after, so one villager off the sheep building the mill
+  and the next four sent to the berries are "4 berries" and
+  "berries ← mill ← 1 sheep". A camp sits in the half of whoever built it
+  (`via_moved`, `via_new`); the other buildings of the moment go with the new
+  villagers, or with the move on a row that has none. **All** is written only
+  where it is exactly the card's own figure for the source (`on_card` in
+  `card()`), since the app moves the whole figure for it: where the replay's
+  "nobody left" and the card's count disagree, All would carry the difference
+  somewhere it never went. The deer go in the extras as one number and one
+  deer. The card draws no figure under a word (`CardView`, `countbox--word`),
+  and draws the word quieter than a number.
 - **Grouping must not cost the figures their truth.** A card's figures are
   read top to bottom, and a row gathers moves from a span of time, so three
   rules keep them equal to the replay's own reading at the end of every phase
@@ -350,7 +383,7 @@ and `npm run preview` proxy `/api` to it.
   a mill built by someone already on the berries changes no job, and a build
   followed by a click on the same camp reads as a misclick. Rows group by
   source and destination only, so one villager building the mill and four
-  more following is "5 berries ← mill".
+  more following are one row.
 
 
 ## Running it

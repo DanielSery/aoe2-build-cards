@@ -47,6 +47,7 @@ export function App() {
   const [showGame, setShowGame] = useState(false);
   const [unsaved, setUnsaved] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [sheet, setSheet] = useState<SheetName>("a4Middle");
@@ -162,6 +163,25 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, remove, selected, apply, addRow, exportPdf]);
 
+  // Empty places are drawn only while something is being dragged. Listened for
+  // in the capture phase, because every drop target stops the drop there. A
+  // drop ends it a turn later: ended at once, the empty place being dropped on
+  // is gone before its own handler runs. `dragend` still ends it when the drag
+  // was over nothing, and is missed when the dragged item was moved away.
+  useEffect(() => {
+    const on = () => setDragging(true);
+    const off = () => setDragging(false);
+    const later = () => setTimeout(off);
+    window.addEventListener("dragstart", on, true);
+    window.addEventListener("dragend", off, true);
+    window.addEventListener("drop", later, true);
+    return () => {
+      window.removeEventListener("dragstart", on, true);
+      window.removeEventListener("dragend", off, true);
+      window.removeEventListener("drop", later, true);
+    };
+  }, []);
+
   // A drag that ends off the card never fires `dragleave` on what it was last
   // over, and the caret would stay behind.
   useEffect(() => {
@@ -210,6 +230,7 @@ export function App() {
 
   const edit: Edit = {
     selected,
+    dragging,
     select: setSelected,
     relocate: (from, to) => apply((c) => relocate(c, from, to)),
     relocateStep: (from, to) => apply((c) => relocateStep(c, from, to)),

@@ -85,20 +85,25 @@ straight back. Both transitions wear the same neutral band, which is what
 says they are the in-between rather than an age. Add, rename, recolour or
 delete them freely.
 
-A row is one sentence about villagers, and it has three places, read right to
-left:
+A row is three columns: the **new** villagers, the ones **moved** off other
+work, and what the row only mentions. The first two read right to left.
 
 ```
-  (3)  [12] [boar]   ←   [3] [gold]   ←   [sheep]        [hunt box]
-       └ end              └ before         └ source      └ extras
+  (3)  [1] [boar] ← [house]     [boar] ← [mill] ← [3] [sheep]      [2] [deer]
+       └ end      └ before      └ moved to       └ source           └ extras
+                                         └ before
 ```
 
 | Place | What it says |
 |---|---|
-| **End** | where these villagers end up. The only one a row must have |
+| **End** | where new villagers end up, and how many |
 | **Before** | optional — what they do on the way |
-| **Source** | optional — where they were |
-| **Extras** | anything the row only mentions: the hunt that is available, a note |
+| **Moved to** | where villagers taken off other work go. No number: the source has it |
+| **Before** (moved) | optional — what they do on the way |
+| **Source** | the work they were taken off, and how many — or **All** |
+| **Extras** | anything the row only mentions: the deer pushed in, a tech, a note |
+
+The moves line up down the card, and the extras keep to its right edge.
 
 Each place holds **icons**, **numbers** and optional **words**. The arrows
 between the places are drawn, never placed — they are there because the next
@@ -108,9 +113,10 @@ A number is simply the first thing in the place it is about — there is no
 column of its own. Words on *end* are how a row becomes an instruction: an
 icon and "Research Loom".
 
-Extras are **pictures and words** — icons, a note, and a **box**, the bordered
-group for "these animals are available". No numbers and no arrows: a number
-out there would be a villager count nothing on the row accounts for.
+Extras are **pictures, words and numbers** — "2 deer", a tech, a note. A
+number there counts what it stands beside, never villagers, so it carries no
+running figure. (The bordered hunt box of earlier versions is gone; a card
+saved with one opens with its icons in its place.)
 
 ### Numbers
 
@@ -157,10 +163,12 @@ the card stays on the same line. Set it in the icon's panel on the right.
 - Click anything on the card to select it. The panel on the right shows
   **that entity and nothing else**; the crumbs at its top are how you get back
   up to the row, the phase or the card.
-- Empty places show their own name on the card, so the three-place structure
-  is visible without reading anything. They vanish from the export.
+- Empty places appear while you drag something, so there is somewhere to drop
+  it, and when selected; otherwise the card shows only what it holds. The end
+  of a new, empty row shows too, so a click on the shelf lands somewhere you
+  can see.
 - **Drag** icons and numbers to reorder them inside a place, or to move them
-  to another place, another row or inside a box. A **blue caret** shows the
+  to another place or another row. A **blue caret** shows the
   gap it will land in — aim at the left or right half of whatever you are
   over. Drag a row by the grip on its left, including into another phase.
 - **Arrow keys** nudge the selection: `←` `→` move an item along its place,
