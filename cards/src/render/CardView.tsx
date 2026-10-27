@@ -165,11 +165,13 @@ function SlotView({ slot, part, hint, step, section, edit, sums }: {
  * Whether an empty place is drawn. Only while something is being dragged — it
  * is somewhere to drop — or while it is the selection, so a click on the
  * shelf has somewhere visible to land; and the end of a selected row that has
- * nothing yet, or a new row would be an empty strip.
+ * nothing yet, or a new row would be an empty strip. The new villagers' source
+ * is offered only beside somewhere they went, since it says who joined them.
  */
 function offered(edit: Edit | undefined, step: Step, section: Section, part: Part): boolean {
   if (!edit) return false;
-  if (edit.dragging || same(edit.selected, { section: section.id, step: step.id, part })) return true;
+  if (same(edit.selected, { section: section.id, step: step.id, part })) return true;
+  if (edit.dragging) return part !== "toFrom" || !slotIsEmpty(step.to);
   return part === "to" && same(edit.selected, { section: section.id, step: step.id });
 }
 
@@ -191,8 +193,8 @@ function Chain({ places, step, section, edit, sums }: {
   );
 }
 
-/** A row: the new villagers, the ones moved off other work, and what the row
- *  only mentions — three columns. */
+/** A row: the new villagers and any who joined them, the ones moved off other
+ *  work to somewhere else, and what the row only mentions — three columns. */
 function StepRow({ step, section, edit, sums }: {
   step: Step; section: Section; edit?: Edit; sums: Record<string, string>;
 }) {
@@ -217,7 +219,8 @@ function StepRow({ step, section, edit, sums }: {
       )}
       <span className="step-body">
         <span className="column column--new">
-          <Chain step={step} section={section} edit={edit} sums={sums} places={[["to", step.to, "end"]]} />
+          <Chain step={step} section={section} edit={edit} sums={sums}
+                 places={[["to", step.to, "end"], ["toFrom", step.toFrom, "joined from"]]} />
         </span>
         <span className="column column--move">
           <Chain step={step} section={section} edit={edit} sums={sums}

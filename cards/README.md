@@ -93,20 +93,22 @@ straight back. Both transitions wear the same neutral band, which is what
 says they are the in-between rather than an age. Add, rename, recolour or
 delete them freely.
 
-A row is three columns: the **new** villagers, the ones **moved** off other
-work, and what the row only mentions. A place is a number, its work, and then
-what is done on the way, drawn small; a move reads right to left.
+A row is three columns: the **new** villagers — with any moved off other
+work to the same place — the ones **moved** somewhere else, and what the row
+only mentions. A place is a number, its work, and then what is done on the
+way, drawn small; a move reads right to left.
 
 ```
-  (3)  [1][boar] house       [3][boar] mill ← [sheep]      [2][deer]
-       └ new villagers       └ moved to     └ source       └ extras
+  [4][boar] house ← [3][sheep]      [2][berries] mill ← [sheep]      [2][deer]
+  └ goes to         └ joined from   └ moved to          └ source     └ extras
 ```
 
 | Place | What it says |
 |---|---|
-| **Goes to** | how many new villagers, the work they go to, then what they build on the way |
+| **Goes to** | how many go there — new villagers, and any it was joined by — the work, then what they build on the way |
+| **Joined from** | villagers moved off other work to the same place: how many — or **All** — and the work they came off |
 | **Moved to** | how many were taken off other work — or **All** — where they go, then what they build on the way |
-| **Source** | the work they were taken off. No number: *moved to* has it |
+| **Source** | the work moved villagers were taken off. No number: *moved to* has it |
 | **Extras** | anything the row only mentions: the deer pushed in, a tech, a note |
 
 The moves line up down the card, and so do the extras. A row too long for
@@ -145,8 +147,12 @@ leaves its number without a total rather than with a meaningless one.
 
 A number in **moved to** is villagers *moved*: they go on to that work and
 come off the source's. **All** moves everyone the source had. A number in
-*goes to* is new villagers arriving. The moves are counted before the new
-villagers, whatever order they are drawn in.
+*goes to* is everyone arriving there, and one on *joined from* is how many of
+them came off that work — **All** for everyone on it — so "4 boar ← 3 sheep"
+is three off the sheep and one new. With no number in *goes to*, the ones off
+the source are all who arrived. Use *joined from* only for a move to where
+the new villagers go; a move anywhere else is *moved to*. The second column
+is counted before the first, whatever order they are drawn in.
 
 That figure is **counted up** by default. Type one into *Total on this
 work* and it says so outright, and everything below counts on from there.
@@ -166,7 +172,8 @@ the card stays on the same line. Set it in the icon's panel on the right.
 - The shelf on the left holds **numbers and icons**. Drag either onto any
   place on the card, or click it and it lands wherever the selection is aiming
   — the banner at the top of the shelf says where. **All** beside the numbers
-  is for where moved villagers go: everyone on the source's work moves.
+  is for where moved villagers go, or for *joined from*: everyone on that work
+  moves.
 - **Add a row** with the `+ row` strip at the foot of each phase, or press
   `Enter` — which adds one after whatever is selected. Either way the new row
   is selected, so the next click or drag has somewhere to go.

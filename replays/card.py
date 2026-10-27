@@ -136,7 +136,8 @@ def _step(to: list[dict], label: str = "", extras: list[dict] | None = None) -> 
     """A row with only its new villagers' column. `moveTo` is always written,
     even empty: a row without it is the app's older one-sentence shape, which
     `migrate.ts` turns into a move wherever there is a source."""
-    return {"id": _id(), "to": _place(to, label), "moveTo": None, "from": None, "extras": extras or []}
+    return {"id": _id(), "to": _place(to, label), "toFrom": None, "moveTo": None, "from": None,
+            "extras": extras or []}
 
 
 def _work(job: str, villagers: int = 0, via: list[dict] | None = None) -> dict:
@@ -147,29 +148,32 @@ def _work(job: str, villagers: int = 0, via: list[dict] | None = None) -> dict:
 
 
 def _unit(row: dict, step: dict) -> dict:
-    """A written row, and which column it fills: `new` names where the new
-    villagers went on a row with only those, `move` the source and destination
+    """A written row, and which column it fills: `new` names the works the
+    first column is about on a row with new villagers -- where they went, and
+    where any who joined them came from -- `move` the source and destination
     on a row with only a move."""
     unit = {"t": row["t"], "step": step, "new": None, "move": None}
-    if row["to"] is not None and bool(row["new"]) != bool(row["from"]):
-        unit["new" if row["new"] else "move"] = row["to"] if row["new"] else (row["from"], row["to"])
+    if row["to"] is not None and row["new"]:
+        unit["new"] = {row["to"], row["from"]} - {None}
+    elif row["to"] is not None and row["from"]:
+        unit["move"] = {row["from"], row["to"]}
     return unit
 
 
 def _paired(line: list[dict]) -> list[dict]:
     """New villagers sent to one place and a move to another at the same time
-    are one row: "2 wood", then "boar ← 2 sheep", then the deer. Not where the
-    new villagers go is the move's source or destination: the move is counted
+    are one row: "2 wood", then "2 boar ← sheep", then the deer. Not where the
+    first column names the move's source or destination: the move is counted
     first, which would be the wrong order for those."""
     out: list[dict] = []
     for unit in line:
         last = out[-1] if out else None
         pair = last and sorted((last, unit), key=lambda u: not u["new"])
         if (pair and pair[0]["new"] and pair[1]["move"] and abs(unit["t"] - last["t"]) <= MERGE
-                and pair[0]["new"] not in pair[1]["move"]):
+                and not pair[0]["new"] & pair[1]["move"]):
             new, move = pair
             out[-1] = {"t": last["t"], "new": None, "move": None,
-                       "step": move["step"] | {"to": new["step"]["to"],
+                       "step": move["step"] | {"to": new["step"]["to"], "toFrom": new["step"]["toFrom"],
                                                "extras": new["step"]["extras"] + move["step"]["extras"]}}
         else:
             out.append(unit)
@@ -673,6 +677,8 @@ class Opening:
             # villagers, or beside the moved ones on a row that has none.
             moved_via, new_via = drawn(row["via_moved"]), drawn(row["via_new"])
             (new_via if row["new"] or not row["from"] else moved_via).extend(_in_order(row["built"]))
+            if row["new"] and row["from"]:
+                moved_via, new_via = [], moved_via + new_via
             extras = _in_order(row["extras"])
             # A place takes icons and numbers only, so a building nothing can
             # draw is named among the extras instead.
@@ -689,9 +695,14 @@ class Opening:
                 herd = len(row["deer"])
                 extras = ([count(herd)] if herd > 1 else []) + [icon("gaia-deer")] + extras
             step = _step([], extras=unnamed + extras)
-            if row["new"]:
+            if row["new"] and row["from"]:
+                # New villagers and a move to the same place are one place,
+                # the number on the source saying how many of them moved.
+                step |= {"to": _work(row["to"], len(row["new"]) + len(row["who"]), new_via),
+                         "toFrom": _work(row["from"], len(row["who"]))}
+            elif row["new"]:
                 step["to"] = _work(row["to"], len(row["new"]), new_via)
-            if row["from"]:
+            elif row["from"]:
                 step |= {"moveTo": _work(row["to"], len(row["who"]), moved_via), "from": _work(row["from"])}
             line.append(_unit(row, step))
 

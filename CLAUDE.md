@@ -30,19 +30,24 @@ works.
 | `src/App.tsx` | state, undo, the three panes, the off-screen export copy |
 
 **A row is three columns, not a canvas.** First where the **new** villagers
-go (`to`). Then the ones **moved** off other work: `moveTo` ← `from`, the
-number on where they went. Last the `extras`, what the row only mentions. A
+go (`to`), and any moved off other work to the *same* place with them, whose
+source is `toFrom`: "12 boar ← All sheep". Then the ones **moved** somewhere
+else: `moveTo` ← `from`, the number on where they went. Last the `extras`,
+what the row only mentions. A
 place is a number, its work, and then what is done on the way — "4 boar house
 house" — and everything after the first icon of a counted place is drawn
 small (`minorIcons`), so the work reads first. A number and the icon after it
 touch, one border between them, so "4 boar" is one thing. The arrow is *drawn
 because the source exists*, never placed by hand; a place takes icons and
-numbers and nothing else, a source icons only; and `extras` take anything — a
+numbers and nothing else, a move's source icons only; and `extras` take anything — a
 number there ("2 deer") counts what it stands beside, never villagers, so it
 carries no figure. The first version let you drop anything anywhere in a flat
 list, and it was unusable; the next had one sentence a row, and "4 hunt ← 3
-sheep" — three off the sheep and one new besides — was a puzzle a card should
-not set. Now that is "1 hunt" and "3 hunt ← sheep". Each column had a
+sheep" — three off the sheep and one new besides — was a puzzle while it
+was the only way to say a move. Splitting it into "1 hunt" and "3 hunt ←
+sheep" put one work in two columns of one row, and that read worse, so a move
+to where the new villagers go is back in their place, as "4 hunt ← 3 sheep",
+and the second column is for moves anywhere else. Each column had a
 *before* place of its own for a while, with its own arrow; a row with a
 building in each was five places and four arrows wide and ran off the card.
 
@@ -146,6 +151,13 @@ Four more rules are easy to break:
   3 moved and 1 new. The moved column is counted before the new one, so a
   number on the left shows its work once the whole row is done: "1 hunt"
   beside "3 hunt ← sheep" reads 4 under the 1 if the hunt was empty.
+- **Beside the new villagers it is the other way round.** The number on `to`
+  is everyone arriving there, and the one on `toFrom` — a number or **All** —
+  is how many of them came off it, so that source does take a number and
+  carries no figure; with no number on `to`, the moved ones are all who
+  arrived. "4 hunt ← 3 sheep" is 3 moved and 1 new, which is why it is only
+  for a move to the place the new villagers went: anywhere else, the move has
+  its own column.
 - **Wood is the resource or a straggler, and those are two icons.** A build
   order means different things by them, and each has its own figure. The wood line,
   gold mine and stone mine icons were dropped for the resource icons
@@ -423,11 +435,12 @@ and `npm run preview` proxy `/api` to it.
   itself. Over 106 cards, 30 seconds rather than 15 drops 4% of villager
   steps and 1.5% of rows, most of them between the sheep and the hunt, and
   the exception keeps 40 of those steps and 21 of the rows.
-- **A row's new villagers are the first column, its moved ones the second.**
-  Three off the sheep and one new to the hunt is "1 hunt" and
-  "3 hunt ← sheep" on one row, and so are new villagers to one place and a move
-  to another at the same time — "2 wood", "2 boar ← sheep", "2 deer" — unless
-  the new ones go to the move's source or destination, where counting the move
+- **A row's new villagers are the first column, its moved ones the second
+  — unless they went to the same place.** Three off the sheep and one new to
+  the hunt is "4 hunt ← 3 sheep", one place. New villagers to one place and a
+  move to another at the same time are one row — "2 wood", "2 boar ← sheep",
+  "2 deer", or "4 hunt ← 3 sheep", "1 wood ← berries" — unless the first
+  column names the move's source or destination, where counting the move
   first would be the wrong order (`_paired`). A move joins the latest move row
   of the phase when it is the same move, however long after, so "1 farm ←
   sheep" and then "2 farm ← sheep" are "3 farm ← sheep". A new villager reaching the same place within
@@ -439,7 +452,8 @@ and `npm run preview` proxy `/api` to it.
   a run: "1 wood lumber camp" and then "3 wood" are "4 wood lumber camp",
   across rows that only move others, but never across one that takes anyone
   off that work. A camp sits in the column of whoever built it
-  (`via_moved`, `via_new`); the other buildings of the moment go with the new
+  (`via_moved`, `via_new`), and both go with the place when the move shares
+  the new villagers'; the other buildings of the moment go with the new
   villagers, or with the move on a row that has none. A move is written with
   its number and never **All**: the app would move the card's whole figure for
   it, and where the replay's "nobody left" and the card's count disagree, All

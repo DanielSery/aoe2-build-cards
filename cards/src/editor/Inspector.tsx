@@ -234,9 +234,11 @@ function ItemPanel({ selected, item, apply, select }: Pick<Props, "card" | "appl
             this place names — sheep, hunt, berries, farms, the wood line,
             stragglers, gold, stone. Where moved villagers go, the number is
             how many moved: they come off the source too, and <em>All</em> is
-            everyone who was on it. Left blank the figure is counted up from
-            the numbers above; typed in, it says so outright and everything
-            below counts on from there.
+            everyone who was on it. Where new villagers go, it is everyone who
+            goes there, and a number beside a source they were joined from is
+            how many of them came off it — <em>All</em> again for everyone.
+            Left blank the figure is counted up from the numbers above; typed
+            in, it says so outright and everything below counts on from there.
           </p>
         </>
       )}

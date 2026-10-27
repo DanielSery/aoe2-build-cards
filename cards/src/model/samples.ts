@@ -2,9 +2,9 @@
  * The card the editor opens with, so the format explains itself.
  *
  * A transcription of a well-known men-at-arms opening rather than advice: it
- * is here because it uses all three columns of a row — new villagers,
- * villagers moved off other work, extras — something done on the way, a
- * caption, a labelled row, numbers that are counted up, and All.
+ * is here because it uses all three columns of a row — new villagers and who
+ * joined them, villagers moved off other work, extras — something done on the
+ * way, a caption, a labelled row, numbers that are counted up, and All.
  */
 
 import type { Card, Step } from "./card";
@@ -32,10 +32,9 @@ export function sampleCard(): Card {
           row(newStep(newSlot([count("4"), icon("resource-wood"), icon("tech-double-bit-axe")])), {
             extras: [icon("gaia-deer"), icon("gaia-deer"), icon("gaia-boar")],
           }),
-          // Twelve on the hunt: all six off the sheep, and six new.
-          row(newStep(newSlot([count("6"), icon("gaia-boar")])), {
-            moveTo: newSlot([count(ALL), icon("gaia-boar")]),
-            from: newSlot([icon("gaia-sheep")]),
+          // Twelve to the hunt: six new, and all six off the sheep with them.
+          row(newStep(newSlot([count("12"), icon("gaia-boar")])), {
+            toFrom: newSlot([count(ALL), icon("gaia-sheep")]),
           }),
           row(newStep(newSlot([icon("building-barracks")])), {
             moveTo: newSlot([icon("resource-wood")]),

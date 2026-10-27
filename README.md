@@ -7,7 +7,8 @@ browser, exported as PNG or PDF, and **read straight out of a recorded game**.
 ![The card editor](docs/editor.png)
 
 - **Draw a card**: drag icons and numbers onto rows of three columns — new
-  villagers, villagers moved off other work (*where to ← source*), and what
+  villagers and any who joined them (*4 boar ← 3 sheep*), villagers moved
+  somewhere else (*where to ← source*), and what
   the row only mentions; the small figure under each number keeps count of
   the villagers on that work (sheep, hunt, berries, farms, pastures, wood
   line, stragglers, gold, stone).

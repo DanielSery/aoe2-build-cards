@@ -6,7 +6,7 @@
  * an error: the card is drawn, not validated, so a missing `to` is a crash in
  * the middle of a render and the whole app goes with it.
  *
- * Six shapes so far, and all of them still open:
+ * Seven shapes so far, and all of them still open:
  *   1. a row was a flat line of items, with the arrows placed by hand;
  *   2. three places, each with a `count` string and an `icons` list;
  *   3. three places of items, with numbers as entities like anything else;
@@ -21,6 +21,9 @@
  *      rather than on the source. A row of shapes 1-5 numbering both the
  *      source and where they went said "3 off the sheep, 4 to the hunt": that
  *      is 3 moved and 1 new to the hunt, so the 1 goes to the new villagers.
+ *   7. the new villagers may have a source too (`toFrom`), for those moved
+ *      off other work to the same place. An older row has none, and keeps
+ *      its move in the second column, where it still means the same.
  * Retired icon keys are carried across too -- see `RENAMED`.
  * The hand-placed arrows are what says where the places divide, so carrying
  * (1) forward is exact rather than a guess.
@@ -123,6 +126,7 @@ function fromFlatList(value: Loose): Wide {
   return {
     id: id(value.id),
     to: lead ? { ...places[0], items: [lead, ...places[0].items] } : places[0],
+    toFrom: null,
     via: places[1] ?? null,
     moveTo: null,
     moveVia: null,
@@ -153,6 +157,7 @@ function step(raw: unknown): Step {
   const made: Wide = {
     id: id(value.id),
     to: lead ? { ...to, items: [lead, ...to.items] } : to,
+    toFrom: value.toFrom ? slot(value.toFrom) : null,
     via: value.via ? slot(value.via) : null,
     moveTo: value.moveTo ? slot(value.moveTo) : null,
     moveVia: value.moveVia ? slot(value.moveVia) : null,
@@ -195,7 +200,7 @@ function narrowed(row: Wide): Step {
       to = { ...to, items: [count(String(on - off)), { ...work, id: crypto.randomUUID() }] };
     }
   }
-  return { id: row.id, to, moveTo, from, extras: row.extras };
+  return { id: row.id, to, toFrom: row.toFrom, moveTo, from, extras: row.extras };
 }
 
 function section(raw: unknown): Section {

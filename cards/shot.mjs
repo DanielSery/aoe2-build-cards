@@ -57,7 +57,7 @@ await lift(page.locator(".palette .icon-btn").first());
 const dragging = await hintsOf(6);
 await page.mouse.move(5, 5);
 await page.mouse.up();
-check(atRest.join("|") === "end" && dragging.join("|") === "end|moved to|source|extras",
+check(atRest.join("|") === "end" && dragging.join("|") === "end|joined from|moved to|source|extras",
   "empty places are drawn only while dragging",
   `row 7 showed ${atRest.join("|")} at rest and ${dragging.join("|")} while dragging`);
 
@@ -67,12 +67,12 @@ check(await page.locator(".canvas .card :is(.step-count, .step-no)").count() ===
 // --- numbers carry their own value and the running total ------------------
 
 // 6 on sheep is 6 on sheep; 4 on wood is 4 on the wood line, not 10 of
-// anything. All six off the sheep go to the hunt, so 6 new make it 12; 3 of
+// anything. Twelve go to the hunt, all six off the sheep among them; 3 of
 // them to the stone are 3 there. "All" is a word and carries no figure; a
 // tower or a militia names no work, so it carries none either.
 const numbers = await page.$$eval(".canvas .card .countbox",
   (els) => els.map((e) => [e.querySelector("b")?.textContent, e.querySelector("i")?.textContent ?? null]));
-const wanted = [["6", "6"], ["4", "4"], ["6", "12"], ["All", null], ["3", "3"], ["5", null], ["3", null]];
+const wanted = [["6", "6"], ["4", "4"], ["12", "12"], ["All", null], ["3", "3"], ["5", null], ["3", null]];
 check(JSON.stringify(numbers) === JSON.stringify(wanted),
   "each number totals its own work, and a move carries its villagers",
   `the numbers were ${JSON.stringify(numbers)}`);
@@ -96,6 +96,25 @@ check(huntThen === "5" && huntNow === "3" && await rows.count() === 9,
   "the number where moved villagers go takes them off the source",
   `one more on the hunt read ${huntThen}, then ${huntNow} with 7 to the tower; wanted 5 and 3`);
 
+// Where moved villagers join new ones, the number where they go counts them
+// all and the one on the source how many came off it: all six of the sheep
+// leave one more new there at 1, and four of them leave it at 3.
+await row(2).locator(".grip").click();
+await page.keyboard.press("Enter");
+await page.click(".palette .number-btn >> nth=0");
+await page.fill(".palette input[type=search]", "sheep");
+await page.click(".palette .icon-btn >> nth=0");
+const sheep = row(3).locator(".slot--to .countbox i");
+const sheepThen = await sheep.textContent();
+await row(2).locator(".slot--toFrom .countbox").click();
+await page.locator(".inspector label:has-text('Number') + input").fill("4");
+const [sheepNow, huntStill] = [await sheep.textContent(), await row(2).locator(".slot--to .countbox i").textContent()];
+for (let i = 0; i < 4; i++) await page.click(".topbar button:has-text('Undo')");
+await page.fill(".palette input[type=search]", "");
+check(sheepThen === "1" && sheepNow === "3" && huntStill === "12" && await rows.count() === 9,
+  "the new villagers' source says how many of them came off it",
+  `one more on the sheep read ${sheepThen}, then ${sheepNow} with 4 off them and ${huntStill} on the hunt; wanted 1, 3, 12`);
+
 // "4 boar": a number and its icon are one thing, and what is done on the way
 // after the work is drawn small.
 const [numberRight, iconLeft] = await row(4).locator(".slot--moveTo .item").evaluateAll((els) =>
@@ -111,7 +130,7 @@ const edgesOf = (rows, part, edge) => page.locator(`.export-copy .card ${rows}`)
   els.map((e) => Math.round(e.querySelector(part).getBoundingClientRect()[edge])), [part, edge]);
 const moveLefts = await edgesOf(".step--moves", ".column--move .slot", "left");
 const extrasLefts = await edgesOf(".step--extras", ".extras", "left");
-check(moveLefts.length === 4 && new Set(moveLefts).size === 1 && extrasLefts.length === 2 && new Set(extrasLefts).size === 1,
+check(moveLefts.length === 3 && new Set(moveLefts).size === 1 && extrasLefts.length === 2 && new Set(extrasLefts).size === 1,
   "moves and extras each form a column",
   `moves started at ${moveLefts.join(", ")} and extras at ${extrasLefts.join(", ")}`);
 
@@ -161,7 +180,7 @@ await page.click(".topbar button:has-text('Undo')");
 
 // --- Del removes whatever is selected -------------------------------------
 
-await iconsIn(2, "from").first().click();
+await iconsIn(3, "from").first().click();
 const panel = await page.textContent(".inspector");
 check(panel.includes("Caption above the tile"),
   "selecting an icon opens its fields", "icon fields did not open");
@@ -169,7 +188,7 @@ check(!panel.includes("Number the rows"),
   "the inspector shows one entity at a time", "the phase panel was showing too");
 
 await page.keyboard.press("Delete");
-check(await iconsIn(2, "from").count() === 0, "Del removes the selected item", "Del did nothing");
+check(await iconsIn(3, "from").count() === 0, "Del removes the selected item", "Del did nothing");
 
 await row(2).locator(".grip").click();
 await page.keyboard.press("Delete");
@@ -284,15 +303,15 @@ await page.click(".topbar button:has-text('Undo')");
 // Its move goes to a line of its own, and does not drag every other move on
 // the card out of line with it. Left in place for the export, which has to
 // break the row exactly as the card does.
-await row(2).locator(".slot--to").click({ position: { x: 3, y: 3 } });
+await row(3).locator(".slot--to").click({ position: { x: 3, y: 3 } });
 for (let i = 0; i < 16; i++) await page.click(".palette .icon-btn >> nth=0");
 const broken = await page.waitForFunction(() => {
-  const step = document.querySelectorAll(".export-copy .card .step")[2];
+  const step = document.querySelectorAll(".export-copy .card .step")[3];
   const [fresh, move] = [".column--new", ".column--move"].map((c) => step.querySelector(c).getBoundingClientRect());
   return move.top >= fresh.bottom - 1;
 }, null, { timeout: 5000 }).then(() => true, () => false);
 const stillLined = await edgesOf(".step--moves", ".column--move .slot", "left");
-check(broken && stillLined.length === 4 && new Set(stillLined.slice(1)).size === 1,
+check(broken && stillLined.length === 3 && new Set(stillLined.slice(1)).size === 1,
   "a row too long for one line breaks before its move, and the other moves stay in line",
   `broke: ${broken}; moves started at ${stillLined.join(", ")}`);
 

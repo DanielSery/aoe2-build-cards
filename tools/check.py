@@ -275,12 +275,46 @@ def check_loom_waits_for_the_villagers_ahead(fail) -> None:
             fail(f"with {why}, Loom was done at {done(between)}, wanted {wanted}")
 
 
+def check_a_move_joining_new_villagers_shares_their_place(fail) -> None:
+    """Villagers moved to where new ones go are written with them, the number
+    on the source saying how many moved: "3 hunt <- 2 sheep". A move to
+    somewhere else at the same time takes the second column of that row."""
+    from types import SimpleNamespace as Stub
+    from replays.card import JOB_ICON, Opening
+
+    opening = object.__new__(Opening)
+    opening.ages, opening.events, opening.end = {}, [], 600.0
+    opening.log = Stub(tcs=set(), start_villagers=[])
+    opening.__dict__["spawns"] = []
+    opening.transitions = lambda: [
+        (5.0, 1, None, "sheep", set(), set()),
+        (6.0, 2, None, "sheep", set(), set()),
+        (7.0, 3, None, "sheep", set(), set()),
+        (8.0, 6, None, "berries", set(), set()),
+        (100.0, 1, "sheep", "hunt", set(), set()),
+        (100.0, 2, "sheep", "hunt", set(), set()),
+        (101.0, 4, None, "hunt", set(), set()),
+        (110.0, 6, "berries", "wood", set(), set())]
+
+    def read(place):
+        return place and [i.get("icon") or i.get("value") for i in place["items"]]
+
+    rows = [tuple(read(step[part]) for part in ("to", "toFrom", "moveTo", "from"))
+            for step in opening.card("x", "", "")["sections"][0]["steps"]]
+    wanted = [(["3", JOB_ICON["sheep"]], None, None, None),
+              (["1", JOB_ICON["berries"]], None, None, None),
+              (["3", JOB_ICON["hunt"]], ["2", JOB_ICON["sheep"]], ["1", JOB_ICON["wood"]], [JOB_ICON["berries"]])]
+    if rows != wanted:
+        fail(f"the rows were {rows}, wanted {wanted}")
+
+
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built,
           check_a_card_names_new_villagers_once,
           check_a_trip_forward_is_no_work,
           check_a_short_task_is_not_on_the_card,
-          check_loom_waits_for_the_villagers_ahead)
+          check_loom_waits_for_the_villagers_ahead,
+          check_a_move_joining_new_villagers_shares_their_place)
 
 
 def main() -> int:
