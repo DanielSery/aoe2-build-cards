@@ -186,6 +186,33 @@ def _paired(line: list[dict]) -> list[dict]:
     return out
 
 
+def _merged(steps: list[dict]) -> list[dict]:
+    """Rows next to each other whose first columns send new villagers to one
+    work are one row, when only one of them has a move beside it: "3 sheep",
+    "1 farm ← sheep" and then "1 sheep" are "4 sheep", "1 farm ← sheep". The
+    move is counted before either, so every figure the merged row ends on is
+    the one the second row ended on."""
+    def work(step: dict) -> str | None:
+        items = step["to"]["items"]
+        plain = (len(items) >= 2 and items[0]["kind"] == "count" and items[0]["value"].isdigit()
+                 and items[1]["kind"] == "icon" and not step["to"]["label"])
+        return items[1]["icon"] if plain else None
+
+    out: list[dict] = []
+    for step in steps:
+        last = out[-1] if out else None
+        if (last and work(step) and work(step) == work(last) and not step["toFrom"]
+                and not (last["moveTo"] and step["moveTo"])):
+            a, b = last["to"]["items"], step["to"]["items"]
+            total = count(int(a[0]["value"]) + int(b[0]["value"]))
+            out[-1] = last | {"to": _place([total, a[1]] + squeeze(a[2:] + b[2:])),
+                              "moveTo": last["moveTo"] or step["moveTo"], "from": last["from"] or step["from"],
+                              "extras": last["extras"] + step["extras"]}
+        else:
+            out.append(step)
+    return out
+
+
 def _begun(plan: list[tuple], here: tuple[float, float] | None) -> list[tuple]:
     """The commands a villager acted on. A run of commands to one work counts
     only if the villager kept it for `BRIEF` -- `ERRAND` if it was gold, stone
@@ -730,7 +757,7 @@ class Opening:
             line.append(_unit(row, step))
 
         for label, line in lines.items():
-            sections[label]["steps"] = [unit["step"] for unit in _paired(line)]
+            sections[label]["steps"] = _merged([unit["step"] for unit in _paired(line)])
 
         for age, going in (("feudal", "Going Feudal"), ("castle", "Going Castle")):
             if age in self.ages:

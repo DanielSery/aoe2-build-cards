@@ -327,10 +327,21 @@ and `npm run preview` proxy `/api` to it.
   Centre idle when the age-up was clicked, or none clicked — is still dated
   off its click, and is early wherever villagers were queued ahead of it.
 - **mgz misreads `SPECIAL` and `UNGARRISON` unit ids** by a byte (an id times
-  256, plus one), so `created_by` skips them. In most games the result is over
+  256, plus the byte before it), so `created_by` skips them, and
+  `game.unshifted` reads them back where they are wanted. In most games the result is over
   a million and filtered anyway; on Socotra, whose ids are small, one
   ungarrison bounded every unit of the game to 0:32 and the card counted 63
   villagers at the Feudal click.
+- **Villagers let out of a Town Centre walk to its gather point.**
+  Garrisoning is a `SPECIAL` aimed at the Town Centre and letting out an
+  `UNGARRISON` from it, so in, gather point on the stone, out is a move to
+  the stone (`PlayerLog.events`) — how a castle drop's three extra stone
+  miners moved while the Town Centre was researching Castle Age, which the
+  card had missed. A decoded id is believed only if another command names
+  it, and a villager given any command since, or sent back to work by the
+  Town Centre, is out already. Over 40 games 198 players let 5599 villagers
+  out to a gather point in the first 25 minutes, most of them to the boar
+  and the deer, and none of it had been on a card.
 - **An empty selection is the units the player last commanded.** A move or
   a right-click with no unit list goes to whoever that player last gave any
   unit's command to — a move, a right-click, a build, a stance
@@ -484,7 +495,10 @@ and `npm run preview` proxy `/api` to it.
   "1 berries mill ← sheep". The new villagers' column names a place once in
   a run: "1 wood lumber camp" and then "3 wood" are "4 wood lumber camp",
   across rows that only move others, but never across one that takes anyone
-  off that work. A camp sits in the column of whoever built it
+  off that work — until that move has been paired into one of the two rows,
+  when they are one again (`_merged`): "3 sheep", "1 farm ← sheep" and "1
+  sheep" are "4 sheep", "1 farm ← sheep", since the move is counted first
+  either way. Two such rows that each carry a move stay two. A camp sits in the column of whoever built it
   (`via_moved`, `via_new`), and both go with the place when the move shares
   the new villagers'; the other buildings of the moment go with the new
   villagers, or with the move on a row that has none. A move is written with

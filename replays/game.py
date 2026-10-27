@@ -83,6 +83,12 @@ def train_seconds(payload: dict) -> float:
     return (DATA.unit_by_id(payload.get("unit_id")) or {}).get("train_time", 0)
 
 
+def unshifted(ids: list) -> list[int]:
+    """The ids of a `SPECIAL` or `UNGARRISON` command, which mgz reads a byte
+    out of place: an id times 256, plus whatever byte came before it."""
+    return [i >> 8 for i in ids if isinstance(i, int)]
+
+
 def building_name(payload: dict) -> str:
     known = payload.get("building") or NEW_BUILDINGS.get(payload.get("building_id"))
     return known or f"#{payload.get('building_id')}"
@@ -382,11 +388,27 @@ class PlayerLog:
         forward walk or fight is a `forward` event rather than an `assign`,
         because its units need not be villagers: a men-at-arms nobody gave a
         soldier's command reads like one, and only work proves a villager.
-        `what` says which of them a forward event is."""
+        `what` says which of them a forward event is.
+
+        Villagers garrisoned in a Town Centre and let out again walk to its
+        gather point, which is a way to move several at once: in, gather point
+        on the stone, out. Garrisoning is a `SPECIAL` aimed at the Town
+        Centre, and both it and `UNGARRISON` carry their ids a byte out of
+        place (`unshifted`)."""
         out: list[Event] = []
+        inside: dict[int, set] = defaultdict(set)
+        gathering: dict[int, Event] = {}
         for a in self.actions:
             t, kind, p = secs(a), a.type.name, a.payload
             at = self.spot(a)
+            # A unit given a command is out, however it got out; a Town Centre
+            # sent back to work has let everyone go back to what they did.
+            if kind not in UNPARSED:
+                for held in inside.values():
+                    held.difference_update(p.get("object_ids") or [])
+            if kind == "BACK_TO_WORK":
+                for tc in set(p.get("object_ids") or []) & self.tcs:
+                    inside.pop(tc, None)
             if self.built(a):
                 b = Placed(t, building_name(p), a.position.x, a.position.y)
                 job = self.dropsite_job(b) or ("forward" if self.ahead(a) else None)
@@ -416,6 +438,19 @@ class PlayerLog:
                 target = p.get("target_id")
                 out.append(Event(t, "rally", job=self.rally_job(a),
                                  target=target if isinstance(target, int) and target >= 0 else None, at=at))
+                for tc in set(p.get("object_ids", [])) & self.tcs:
+                    gathering[tc] = out[-1]
+            elif kind == "SPECIAL" and p.get("target_id") in self.tcs:
+                # Read a byte out of place, an id is believed only if some
+                # other command names it too.
+                inside[p["target_id"]] |= {i for i in self.villagers(unshifted(p.get("object_ids", [])))
+                                           if i in self.r.commanded}
+            elif kind == "UNGARRISON":
+                for tc in set(unshifted(p.get("object_ids", []))) & self.tcs:
+                    out_again, point = inside.pop(tc, set()), gathering.get(tc)
+                    if out_again and point and point.job:
+                        out.append(Event(t, "assign", sorted(out_again), job=point.job, target=point.target,
+                                         at=point.at))
             elif kind == "RESEARCH":
                 out.append(Event(t, "research", ids=list(p.get("object_ids", [])),
                                  what=p.get("technology") or f"#{p.get('technology_id')}",

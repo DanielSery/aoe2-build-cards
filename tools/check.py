@@ -363,6 +363,50 @@ def check_a_gather_point_moved_for_the_villager(fail) -> None:
         fail(f"the villagers went to {got}, wanted stone, gold, gold")
 
 
+def check_villagers_let_out_go_to_the_gather_point(fail) -> None:
+    """Villagers garrisoned in the Town Centre and let out again walk to its
+    gather point: in, gather point on the stone, out, is three to the stone.
+    Garrisoning carries its ids a byte out of place, and one given another
+    command since is out already."""
+    from datetime import timedelta
+    from types import SimpleNamespace as Stub
+    from replays.game import PlayerLog
+
+    def command(t, kind, ids, **rest):
+        return Stub(timestamp=timedelta(seconds=t), type=Stub(name=kind), position=None,
+                    payload={"object_ids": ids, **rest})
+
+    log = object.__new__(PlayerLog)
+    log.r = Stub(nodes={}, last_starting_id=100, commanded={201, 202, 203, 204})
+    log.tcs, log.start_villagers, log.soldiers, log.cancelled = {50}, set(), set(), set()
+    log.forward = lambda x, y: False
+    log.actions = [command(10.0, "SPECIAL", [201 << 8, 202 << 8, 203 << 8, 204 << 8], target_id=50),
+                   command(11.0, "MOVE", [204]),
+                   command(12.0, "GATHER_POINT", [50], target_id=7, target_type=102),
+                   command(13.0, "UNGARRISON", [(50 << 8) + 1])]
+    out = [(e.t, e.ids, e.job) for e in log.events() if e.kind == "assign"]
+    if out != [(13.0, [201, 202, 203], "stone")]:
+        fail(f"letting them out read as {out}, wanted three to the stone at 13s")
+
+
+def check_neighbouring_rows_name_a_work_once(fail) -> None:
+    """"3 sheep" beside "1 farm <- sheep", then "1 sheep", is one row, "4
+    sheep" beside the move; two rows that each have a move stay two."""
+    from replays.card import _merged, _step, _work
+
+    def row(new, move=None):
+        step = _step(_work("sheep", new)["items"])
+        return step | {"moveTo": _work("farm", 1), "from": _work("sheep")} if move else step
+
+    def read(steps):
+        return [(s["to"]["items"][0]["value"], bool(s["moveTo"])) for s in steps]
+
+    if read(_merged([row(3, True), row(1)])) != [("4", True)]:
+        fail(f"the rows read {read(_merged([row(3, True), row(1)]))}, wanted one: 4 sheep beside the move")
+    if read(_merged([row(3, True), row(1, True)])) != [("3", True), ("1", True)]:
+        fail("two rows with a move each were merged")
+
+
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built,
           check_a_card_names_new_villagers_once,
@@ -372,7 +416,9 @@ CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_a_move_joining_new_villagers_shares_their_place,
           check_an_empty_selection_is_the_last_units_commanded,
           check_a_mill_goes_with_the_berries,
-          check_a_gather_point_moved_for_the_villager)
+          check_a_gather_point_moved_for_the_villager,
+          check_villagers_let_out_go_to_the_gather_point,
+          check_neighbouring_rows_name_a_work_once)
 
 
 def main() -> int:
