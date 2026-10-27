@@ -1,20 +1,22 @@
 # AoE2 Build Cards
 
-Build-order cards for Age of Empires II: Definitive Edition — the numbered rows
-of icons under coloured age bands that players share as images — drawn in the
+Build-order cards for Age of Empires II: Definitive Edition — the rows of
+icons under coloured age bands that players share as images — drawn in the
 browser, exported as PNG or PDF, and **read straight out of a recorded game**.
 
 ![The card editor](docs/editor.png)
 
-- **Draw a card**: drag icons and numbers onto rows of *end ← before ← source*;
-  the small figure under each number keeps count of the villagers on that work
-  (sheep, hunt, berries, farms, wood line, stragglers, gold, stone).
+- **Draw a card**: drag icons and numbers onto rows of three columns — new
+  villagers, villagers moved off other work (*where to ← source*), and what
+  the row only mentions; the small figure under each number keeps count of
+  the villagers on that work (sheep, hunt, berries, farms, pastures, wood
+  line, stragglers, gold, stone).
 - **Analyze a game**: find a player by name and filter their last four months
   of games by format, flank/pocket, civ and map — or paste a match link, or
   open a replay file — and every player's plan is listed ("men-at-arms →
   archers", "boom → knights", "tower rush → boom", "douche"). Pick one and
   their opening becomes a card: every villager move, building, tech and
-  age-up, numbered by villager count.
+  age-up, and the villagers sent forward to the enemy.
 - **Export** a card as an image, a print-ready PDF, or a JSON file to share.
 
 Cards live in your browser's local storage. Nothing is uploaded anywhere: the

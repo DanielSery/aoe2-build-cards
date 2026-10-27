@@ -205,9 +205,6 @@ input.wide, select.wide, textarea.wide { width: 100%; }
         border-top: 2px solid rgba(0, 0, 0, 0.15); }
 .step:first-child { border-top: 0; }
 
-.step-no { flex: none; width: 52px; height: 52px; border-radius: 50%;
-           background: #1d2733; color: #fff; font-size: 27px; font-weight: 900;
-           display: grid; place-items: center; }
 
 .countbox { min-width: 64px; height: 64px; padding: 0 9px; background: #f8f6f0;
             border: 3px solid #111318; border-radius: 6px; line-height: 1;
@@ -231,17 +228,16 @@ input.wide, select.wide, textarea.wide { width: 100%; }
  * what would notice if it did not. The row gap leaves a caption room. */
 .chain { display: flex; align-items: center; gap: 12px; }
 .step-body { display: flex; flex-wrap: wrap; align-items: center; row-gap: 22px; flex: 1; min-width: 0; }
-/* The three columns: new villagers, moves, extras. The new villagers are kept
- * as wide as the widest on the card wherever a move follows (`useColumns`), so
- * the moves line up; the extras keep to the right edge. Lining the extras up
- * on their left as well would add up the widest of every column, and a card
- * with one long move and one long left half would run off its own edge. */
+/* The three columns: new villagers, moves, extras. Each of the first two is
+ * kept as wide as its widest on the card wherever something follows it
+ * (`useColumns`), so the moves and the extras each start at one x. */
 .column { display: flex; flex: none; }
-.step--moves .column--new, .card--edit .step .column--new { min-width: var(--new-column, auto); }
+:is(.step--moves, .step--extras) .column--new, .card--edit .step .column--new { min-width: var(--new-column, auto); }
+.step--extras .column--move, .card--edit .step .column--move { min-width: var(--move-column, auto); }
 .column--move { margin-left: 22px; }
 .link { display: flex; align-items: center; gap: 12px; }
 .slot { display: flex; align-items: center; gap: 8px; }
-.extras { display: flex; align-items: center; gap: 8px; margin-left: auto; padding-left: 12px; }
+.extras { display: flex; align-items: center; gap: 8px; margin-left: 22px; }
 
 .item { display: inline-flex; align-items: center; position: relative; }
 .tile { width: 64px; height: 64px; border: 3px solid #111318; border-radius: 5px;

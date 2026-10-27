@@ -8,7 +8,7 @@ things by, and `tools/` holds the icon fetcher and the offline checks.
 ### `cards/` — the card editor
 
 A Vite + React app: the build-order **card** players post as an image —
-numbered rows of icons under coloured phase bands. It is a static site with no
+rows of icons under coloured phase bands. It is a static site with no
 Python: a card answers "what am I telling you to do?", not "would this build
 work?". The one thing it asks a server for is *Analyze game…*, which
 `replays/` answers; served without it, that dialog says so and everything else
@@ -46,18 +46,24 @@ not set. Now that is "1 hunt" and "3 hunt ← sheep". Each column had a
 *before* place of its own for a while, with its own arrow; a row with a
 building in each was five places and four arrows wide and ran off the card.
 
-**The moves are a column; the extras keep to the right edge.** Every row with
-a move has its new villagers' column as wide as the widest such column on the
-card (`CardView.useColumns`, a CSS variable on the card itself, so the
-off-screen copy measures its own). A row with no move is left out of the
-measure, or one age-up label would push every move on the card to the right;
-so is a row whose move does not fit beside its own new villagers at all. A row
-that does not fit breaks between its columns — the move, then the extras, go
-to a line of their own (`.step-body` wraps) — and never inside a column. The
-extras are not lined up on their left as well: that adds up the widest of
-every column, and one long move plus one long left half ran a card off its own
-edge. Measured rather than a CSS grid, because the rows sit in separate phase
-boxes.
+**The moves are a column, and so are the extras.** Every row with anything
+after its new villagers has that column as wide as the widest such on the
+card, and every row with extras has its moves' column as wide as the widest
+such, so every move starts at one x and every row's extras at another
+(`CardView.useColumns`, CSS variables on the card itself, so the off-screen
+copy measures its own). A row with nothing after a column is left out of
+its measure, or one age-up label would push every move on the card to the
+right; so is a row that would not fit on one line even so. A row that does
+not fit breaks between its columns — the move, then the extras, go to a line
+of their own (`.step-body` wraps) — and never inside a column. Lining the
+extras up on their left once ran a card off its own edge; it fits since the
+rows lost their numbers, and the wrap is what keeps the odd long row on the
+card. Measured rather than a CSS grid, because the rows sit in separate
+phase boxes.
+
+**A row has no number.** The circle in front of every row counted rows, or
+the villagers at work, and took 66px off every row of a 1040px card for a
+figure the numbers on the row already carry.
 
 **An empty place is drawn only while something is being dragged** — or when
 it is the selection, or the end of a selected row that holds nothing, so a
@@ -131,13 +137,6 @@ Four more rules are easy to break:
   outright and *sets* the running one from there on, because an absolute is a
   claim no arithmetic over the card can make. **All** is the one word
   `totals()` reads: where moved villagers go, it is everyone on the source.
-- **Row numbers count rows or villagers** (`Card.rowNumbers`). Counting
-  villagers, a row wears the sum of every work's figure once it is done
-  (`numbering`), so a row that only moves villagers repeats the number above
-  it — and a villager the card never put to work is not in it, which is why an
-  imported card's last Dark Age row can read under the age-up's "at N vils",
-  which counts every villager trained by the time the research started. An
-  unnumbered phase stays unnumbered either way.
 - **A number on `moveTo` is how many moved, and they come off `from`** —
   which is why a source takes no number; **All** moves the source's whole
   figure. The figure under it is where they went, not what is left behind:
@@ -318,6 +317,9 @@ and `npm run preview` proxy `/api` to it.
   card draws it small; a building with no icon is named in the extras,
   since a place takes icons and numbers only. Every building placed is drawn
   once: a camp several rows' villagers helped build sits on the first of them,
+  a camp counts as on the way only in the first `ON_THE_WAY` seconds of its
+  builders' step (the same crew's second lumber camp ten minutes later went
+  up when it went up, not beside the first),
   a camp no step claimed goes up on the way like a house, and walls — a
   dragged wall is a `WALL` command, not a `BUILD` — are drawn once per phase
   band. A tech with no icon of its own wears its unit's if it is that unit's
@@ -342,21 +344,26 @@ and `npm run preview` proxy `/api` to it.
     drop.
   Every threshold there is judgement, not measurement, and units are counted
   off queue clicks, which include the unpaid ones.
+- **Pastures are farms.** The Khitans' pasture is building 1889, which mgz
+  cannot name (`game.NEW_BUILDINGS`); a villager who builds or is sent to one
+  is on the pasture, a job and a figure of its own, drawn with its own icon.
 - **Villagers sent to the enemy are forward, and forward is no work.** A
   tower rush, a castle drop, a douche, a forward barracks: the villagers who
   walk there are taken off their work on the card — "10 tower forward ←
   sheep", the place said in words because it has no icon of its own — and
   come back off it — "9 stone ← forward" — when they are next given work at
   home or at the enemy's gold. A walk is read off `MOVE` commands to a forward
-  spot, and helping to build a forward foundation off a right-click on it. A
-  trip only counts if its villagers put up or help build a tower, a castle, a
-  Town Centre, a barracks, range, stable or siege workshop there (`card.FRONT`):
-  without that rule, a team game's wall along its front and a chase after a
-  scout read as forward, and on Socotra, whose Town Centres are 45 tiles
-  apart, so does anything a few tiles past the middle. Of the 93 players over every
-  cached game left with a trip forward, 86 have a plan saying tower rush,
-  towers, castle drop or forward production, and the other 7 put up a siege
-  workshop forward. A forward walk is its own event kind, not an
+  spot, a fight off a right-click there on anything that is not one's own
+  building, and laming off one on a sheep, boar or deer there; helping to
+  build is a right-click on one's own foundation. A trip only counts if its
+  villagers fight, lame, or put up or help build a tower, a castle, a Town
+  Centre, a barracks, range, stable or siege workshop there (`card.FRONT`):
+  without that rule a team game's wall along its front and a walk out to a
+  far gold mine read as forward, and on Socotra, whose Town Centres are 45 tiles
+  apart, so does anything a few tiles past the middle. Fights are in because
+  on Socotra villager fights and laming are the game; they also catch
+  villagers knocking down an Arena wall at the enemy's, which is forward but
+  no plan the strategy line names. A forward walk is its own event kind, not an
   `assign`, because the units in it need not be villagers, and `spawns` only
   believes work.
 - **An imported card numbers villagers, and the "Going" bands not at all.**
@@ -367,13 +374,22 @@ and `npm run preview` proxy `/api` to it.
   age-up behind them, so "at N vils" counts when the research starts, not at
   the click — most of the rest had stood idle, and 15 came from a second Town
   Centre, which really can train during the research; the card leaves the
-  band to moves anyway. Units made in a phase are a row of their icons and
-  nothing else.
-- **A task held under 15 seconds never happened** (`card.BRIEF`). A villager
-  sent somewhere and sent on again sooner than that — a misclick, a change of
-  mind, a gather point left at once — is drawn going straight to where they
-  went next, and a detour back to the same work is no move at all. Over 88
-  cards that drops about 3% of villager steps and 1.4% of rows.
+  band to moves anyway. So is a Town Centre tech clicked during the
+  research: the queue puts it behind the age-up, so its row is the first of
+  the next age (`Opening._after_going`). Units made are mentioned, in the
+  extras of the row being worked when the first of them was queued in that
+  phase, like a tech from any other building.
+- **A task held under 15 seconds, or given up before the villager got there,
+  never happened** (`card.BRIEF`, `_begun`). A villager sent somewhere and
+  sent on again sooner than that — a misclick, a change of mind, a gather
+  point left at once, the wood swapped for the boar while still walking to
+  the trees — is drawn going straight to where they went next, and a detour
+  back to the same work is no move at all. The walk is a straight line at the
+  villager's speed in the game data, from where the previous command had got
+  them to; a run of commands to one work is timed by its first target, since
+  stepping between carcasses or trees is the work itself. Over 88 cards the
+  15 seconds drop about 3% of villager steps and 1.4% of rows; over 14
+  games the walk drops 0.8% more steps and 0.7% more rows.
 - **A row's new villagers are the first column, its moved ones the second.**
   Three off the sheep and one new to the hunt is "1 hunt" and
   "3 hunt ← sheep" on one row, and so are new villagers to one place and a move

@@ -20,14 +20,16 @@ from collections import Counter, defaultdict
 from functools import cached_property
 from pathlib import Path
 
-from .game import AGE_TECHS, CASTLES, DROPSITES, PRODUCTION, TOWERS, UNIT_LINES, Event, PlayerLog, Replay
+from .game import (AGE_TECHS, CASTLES, DATA, DROPSITES, FIELDS, PRODUCTION, TOWERS, UNIT_LINES, Event,
+                   PlayerLog, Replay)
 
 ICON_DIR = Path(__file__).resolve().parents[1] / "cards" / "public" / "icons" / "aoe2"
 ICON_KEYS = {p.stem for p in ICON_DIR.glob("*.png")}
 
 JOB_ICON = {"sheep": "gaia-sheep", "hunt": "gaia-boar", "berries": "gaia-berries",
             "straggler": "gaia-straggler", "wood": "resource-wood", "gold": "resource-gold",
-            "stone": "resource-stone", "farm": "building-farm", "fish": "gaia-fish"}
+            "stone": "resource-stone", "farm": "building-farm", "pasture": "building-pasture",
+            "fish": "gaia-fish"}
 # Boar and deer are one job on a card: what the villagers do is hunt. Which
 # animal it was survives only as the deer in the row's extras, one per deer.
 HUNT = {"boar", "deer"}
@@ -44,9 +46,11 @@ PHASES = [("Dark Age", "dark"), ("Going Feudal", "transition"), ("Feudal Age", "
           ("Going Castle", "transition"), ("Castle Age", "castle")]
 
 VILLAGER_SECONDS = 25.0
+VILLAGER_SPEED = DATA.unit_by_id(83)["speed"]  # tiles a second
 SPACING = 0.9       # of a villager's time: slack for a faster Town Centre, as Persian age-ups run 5-9% under the nominal time
-BRIEF = 15.0        # a task replaced this soon -- a misclick, a change of mind, a gather point left at once -- is not on the card
+BRIEF = 15.0        # a task replaced this soon, or before the villager got there, is not on the card
 FIRST_ORDER = 15.0  # how long before a step a camp its villager put up, or a deer it was sent at, still belongs to it
+ON_THE_WAY = 45.0   # and how long after: a camp the same villagers put up later is a camp of its own
 ROUND_TRIP = 25.0   # there and straight back is an errand, not a reassignment
 MERGE = 45.0        # commands this close with the same meaning are one row
 SWAP = 90.0         # one villager each way inside a phase is a swap, not a change of plan
@@ -173,6 +177,37 @@ def _paired(line: list[dict]) -> list[dict]:
     return out
 
 
+def _begun(plan: list[tuple], here: tuple[float, float] | None) -> list[tuple]:
+    """The commands a villager acted on. A run of commands to one work counts
+    only if the villager kept it for `BRIEF` and long enough to reach its first
+    target from wherever the previous command had got them to: sent to the
+    wood and on to the boar before reaching the trees, they never cut any. The
+    walk is estimated in a straight line at a villager's speed."""
+    runs: list[list[tuple]] = []
+    for p in plan:
+        if runs and runs[-1][-1][1] == p[1]:
+            runs[-1].append(p)
+        else:
+            runs.append([p])
+    kept: list[tuple] = []
+    for k, run in enumerate(runs):
+        ends = runs[k + 1][0][0] if k + 1 < len(runs) else math.inf
+        arrive = run[0][0]
+        for j, p in enumerate(run):
+            at = p[-1]
+            if at is None or here is None:
+                here = at or here
+                continue
+            walk = math.dist(here, at) / VILLAGER_SPEED
+            if j == 0:
+                arrive = p[0] + walk
+            share = min(1.0, ((run[j + 1][0] if j + 1 < len(run) else ends) - p[0]) / walk) if walk else 1.0
+            here = (here[0] + (at[0] - here[0]) * share, here[1] + (at[1] - here[1]) * share)
+        if k + 1 == len(runs) or k == 0 and run[0][1] == "idle" or ends - run[0][0] >= BRIEF and ends >= arrive:
+            kept.extend(run)
+    return kept
+
+
 def _settled(kept: list[tuple]) -> list[tuple]:
     """A villager's steps with the repeats and errands taken out: the same work
     twice is one step, and there and straight back is none."""
@@ -245,11 +280,19 @@ class Opening:
 
     def _busy(self) -> list[tuple[float, float]]:
         spans = [(max(click, landing - AGE_SECONDS[age]), landing) for age, (click, landing) in self.ages.items()]
-        loom = next((e.t for e in self.events
+        loom = next((self._after_going(e.t) for e in self.events
                      if e.kind == "research" and e.what == "Loom" and set(e.ids) & self.log.tcs), None)
         if loom is not None:
             spans.append((loom, loom + 25))
         return sorted(spans)
+
+    def _after_going(self, t: float) -> float:
+        """When a Town Centre tech clicked at `t` was researched: one clicked
+        while an age is researching waits behind it in the queue."""
+        for age in ("feudal", "castle"):
+            if age in self.ages and self.ages[age][0] <= t < self.ages[age][1]:
+                return self.ages[age][1]
+        return t
 
     @cached_property
     def spawns(self) -> list[tuple[float, int | None]]:
@@ -357,47 +400,53 @@ class Opening:
         to. They are matched to a step by its job afterwards rather than being a
         step of their own: whether a build survives as a step depends on what
         was clicked next, and a mill built by someone already on the berries
-        changes no job at all."""
+        changes no job at all. Only on the way, though: a second lumber camp
+        the same crew puts up ten minutes later goes up when it went up. A trip
+        forward is the exception, and keeps all it put up there."""
         plans: dict = defaultdict(list)
         built: dict = defaultdict(list)
-        raised: dict = defaultdict(list)  # when each villager put something up forward
+        raised: dict = defaultdict(list)  # when each villager did something forward worth the trip
+        nodes = self.r.nodes
+        home = next(((nodes[i].x, nodes[i].y) for i in self.log.tcs if i in nodes), None)
+        origin = {v: (nodes[v].x, nodes[v].y) for v in self.log.start_villagers if v in nodes}
         for v in self.log.start_villagers:
-            plans[v].append((0.0, "idle", None, None))
+            plans[v].append((0.0, "idle", None, None, None))
         for k, (t, i) in enumerate(self.spawns):
             rally = self.rally_at(t)
-            raw, target = (rally.job, rally.target) if rally else (None, None)
-            plans[i if i is not None else f"unseen{k}"].append((t, card_job(raw) or "idle", raw, target))
+            raw, target, at = (rally.job, rally.target, rally.at) if rally else (None, None, None)
+            plans[i if i is not None else f"unseen{k}"].append((t, card_job(raw) or "idle", raw, target, at))
         for e in self.events:
             if e.t > self.end or e.kind not in ("assign", "build", "forward") or not e.job:
                 continue
             # What goes up forward is the trip's, as a camp is its work's.
-            site = (e.site if e.site and (e.site[0] in DROPSITES and e.site[0] != "Farm" or e.job == "forward")
+            site = (e.site if e.site and (e.site[0] in DROPSITES and e.site[0] not in FIELDS or e.job == "forward")
                     and e.t - e.site[1] <= MERGE else None)
             for v in e.ids:
                 if v in plans:
-                    plans[v].append((e.t, card_job(e.job), e.job, e.target))
+                    plans[v].append((e.t, card_job(e.job), e.job, e.target, e.at))
                     if site:
                         built[v].append((e.t, card_job(e.job), site))
-                    if e.job == "forward" and e.building in FRONT:
+                    if e.job == "forward" and (e.building in FRONT or e.what in ("fight", "lame")):
                         raised[v].append(e.t)
 
         out = []
         for v, plan in plans.items():
             plan.sort(key=lambda p: p[0])
-            kept = [p for k, p in enumerate(plan)
-                    if k + 1 == len(plan) or k == 0 and p[1] == "idle" or plan[k + 1][0] - p[0] >= BRIEF]
+            kept = _begun(plan, origin.get(v, home))
             steps = _settled(kept)
-            # A trip forward that put up nothing to fight with is a walk, a
-            # chase or a team game's wall along its front, not a plan: on a
-            # small map the far side of the middle is forward.
+            # A trip forward that fought nobody, took nothing and put up
+            # nothing to fight with is a walk or a team game's wall along its
+            # front, not a plan: on a small map the far side of the middle is
+            # forward.
             steps = _settled([step for k, step in enumerate(steps) if step[1] != "forward" or any(
                 step[0] - FIRST_ORDER <= when < (steps[k + 1][0] if k + 1 < len(steps) else math.inf)
                 for when in raised[v])])
             previous = None
             for k, (t, job, *_) in enumerate(steps):
                 until = steps[k + 1][0] if k + 1 < len(steps) else float("inf")
-                sites = {site for when, on, site in built[v] if on == job and t - FIRST_ORDER <= when < until}
-                deer = {target or "?" for when, _, raw, target in kept
+                way = until if job == "forward" else min(until, t + ON_THE_WAY)
+                sites = {site for when, on, site in built[v] if on == job and t - FIRST_ORDER <= when < way}
+                deer = {target or "?" for when, _, raw, target, _ in kept
                         if raw == "deer" and t - FIRST_ORDER <= when < until}
                 if job != "idle":
                     out.append((t, v, previous, job, sites, deer))
@@ -521,13 +570,13 @@ class Opening:
                     target = row
             target[part].append((t, item))
 
-        walled, researched = set(), set()
+        walled, researched, queued = set(), set(), set()
         for e in self.events:
             if e.t > self.end:
                 break
             # A building no step claimed -- a house, or a camp whose builder's
             # step was a misclick or an errand -- still went up, on the way.
-            if e.kind == "build" and e.building != "Farm" and e.site not in placed:
+            if e.kind == "build" and e.building not in FIELDS and e.site not in placed:
                 if e.building.endswith("Wall"):
                     if (self.section_of(e.t), e.building) in walled:
                         continue
@@ -541,12 +590,17 @@ class Opening:
                 if e.what in TOWN_CENTRE_TECHS or set(e.ids) & self.log.tcs:
                     # The Town Centre's work for that while, so a step of its
                     # own like an age-up, not a mention on someone else's.
-                    tech = _row(e.t, None, None)
+                    tech = _row(self._after_going(e.t), None, None)
                     tech["research"] = True
                     tech["extras"].append((e.t, item))
                     rows.append(tech)
                 else:
                     attach(e.t, item, "extras")
+            elif (e.kind == "queue" and e.what != "Villager" and not set(e.ids) & self.log.tcs
+                  and (self.section_of(e.t), e.what) not in queued):
+                # Soldiers are what the row mentions, not where villagers went.
+                queued.add((self.section_of(e.t), e.what))
+                attach(e.t, icon(unit_icon(e.what)) if unit_icon(e.what) else text(e.what), "extras")
         return sorted(rows, key=lambda r: r["t"])
 
     def _drop_swaps(self, rows: list[dict]) -> list[dict]:
@@ -567,11 +621,7 @@ class Opening:
     # ---------------------------------------------------------------- card
 
     def card(self, name: str, civ: str, setting: str) -> dict:
-        # The Town Centre is researching through a "Going" band, so no
-        # villager is added there and its rows go unnumbered.
-        sections = {label: {"id": _id(), "label": label, "tone": tone, "numbered": tone != "transition",
-                            "steps": []}
-                    for label, tone in PHASES}
+        sections = {label: {"id": _id(), "label": label, "tone": tone, "steps": []} for label, tone in PHASES}
         lines: dict[str, list[dict]] = defaultdict(list)
         for row in self.rows():
             def drawn(sites: set) -> list[dict]:
@@ -591,8 +641,9 @@ class Opening:
             new_via = squeeze([i for i in new_via if i["kind"] == "icon"])
             line = lines[self.section_of(row["t"])]
             if row["to"] is None:
-                line.append(_unit(row, _step(new_via + [i for i in extras if i["kind"] == "icon"],
-                                              extras=unnamed + [i for i in extras if i["kind"] != "icon"])))
+                # A Town Centre tech is the row; anything else is only mentioned.
+                main = [i for i in extras if i["kind"] == "icon"] if row["research"] else []
+                line.append(_unit(row, _step(new_via + main, extras=unnamed + [i for i in extras if i not in main])))
                 continue
             if row["to"] == "hunt" and row["deer"]:
                 herd = len(row["deer"])
@@ -616,17 +667,6 @@ class Opening:
                 label = f"click {clock(click)} at {self.population_at(started)} vils, up {clock(landing)}"
                 sections[going]["steps"].insert(0, _step([icon(AGE_ICON[age])], label=label))
 
-        made: dict[str, list] = defaultdict(list)
-        for e in self.events:
-            if e.kind == "queue" and e.what != "Villager" and e.t <= self.end and not set(e.ids) & self.log.tcs:
-                if e.what not in made[self.section_of(e.t)]:
-                    made[self.section_of(e.t)].append(e.what)
-        for label, units in made.items():
-            drawable = [u for u in units if unit_icon(u)]
-            other = [u for u in units if not unit_icon(u)]
-            sections[label]["steps"].append(_step([icon(unit_icon(u)) for u in drawable],
-                                                  extras=[text(", ".join(other))] if other else []))
-
         ages = ", ".join(f"{age.title()} {clock(landing)}" for age, (_, landing) in self.ages.items()
                          if age in ("feudal", "castle"))
         return {
@@ -635,7 +675,6 @@ class Opening:
             "title": f"{name} · {civ}",
             "subtitle": f"{setting} · {ages}" if ages else setting,
             "totals": True,
-            "rowNumbers": "villagers",
             "sections": [s for s in sections.values() if s["steps"]],
             "updated": 0,
         }

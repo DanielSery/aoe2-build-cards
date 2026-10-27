@@ -36,14 +36,16 @@ NEW_GAIA = {
     1613: ("Arena forest", "wood"),
 }
 # 2556 is what the Muisca place at a lumber camp's time and again at a mining
-# camp's.
-NEW_BUILDINGS = {2556: "Settlement"}
+# camp's; 1889 the Khitans' farm.
+NEW_BUILDINGS = {2556: "Settlement", 1889: "Pasture"}
 
 BOAR_TYPES = {48, 810, 822, 936, 1139, 1301, 2589}
 DROPSITES = {"Lumber Camp": "wood", "Mill": "mill", "Mining Camp": "mine", "Farm": "farm",
-             "Folwark": "mill", "Mule Cart": "mine", "Settlement": "any"}
+             "Pasture": "pasture", "Folwark": "mill", "Mule Cart": "mine", "Settlement": "any"}
+FIELDS = {"Farm", "Pasture"}  # the work itself rather than somewhere to take it
 AGE_TECHS = {"Feudal Age": "feudal", "Castle Age": "castle", "Imperial Age": "imperial"}
 UNPARSED = {"SPECIAL", "UNGARRISON"}  # mgz reads their unit ids a byte out of place
+LAMED = {"sheep", "boar", "deer"}  # what a villager takes off the enemy rather than works
 SOLDIERING = {"FORMATION", "PATROL", "STANCE", "DE_ATTACK_MOVE", "ATTACK_GROUND", "GUARD", "FOLLOW"}
 BUILDING = {"BUILD", "REPAIR", "WALL"}
 MATCH = 10.0           # a deleted id first named this long after a placement could be anything
@@ -105,6 +107,7 @@ class Event:
     amount: int = 1
     site: tuple[str, float] | None = None  # the building placed or worked on, and when it was placed
     target: int | None = None
+    at: tuple[float, float] | None = None  # where the command sends its units
 
 
 class Replay:
@@ -287,13 +290,13 @@ class PlayerLog:
             if b.t > t:
                 break
             d = math.dist((x, y), (b.x, b.y))
-            if d <= (2.2 if b.name in ("Farm", "Town Center") else 1.6) and d < best_d:
+            if d <= {"Farm": 2.2, "Town Center": 2.2, "Pasture": 2.9}.get(b.name, 1.6) and d < best_d:
                 best, best_d = b, d
         return best
 
     def dropsite_job(self, b: Placed) -> str | None:
         kind = DROPSITES.get(b.name)
-        if kind in ("wood", "farm"):
+        if kind in ("wood", "farm", "pasture"):
             return kind
         if kind == "mill":
             return "berries" if self.r.nearest(b.x, b.y, {"berries"}, 6.0) else "farm"
@@ -336,48 +339,60 @@ class PlayerLog:
         return [i for i in ids if i in self.start_villagers
                 or i > self.r.last_starting_id and i not in self.soldiers]
 
+    def spot(self, a) -> tuple[float, float] | None:
+        """Where a command sends its units: the click, or what was clicked."""
+        if a.position is not None:
+            return a.position.x, a.position.y
+        node = self.r.nodes.get(a.payload.get("target_id"))
+        return (node.x, node.y) if node else None
+
     def ahead(self, a) -> bool:
         """Whether a command sends its units forward (`Replay.forward`)."""
-        node = self.r.nodes.get(a.payload.get("target_id"))
-        at = (a.position.x, a.position.y) if a.position is not None else (node.x, node.y) if node else None
+        at = self.spot(a)
         return at is not None and self.forward(*at)
 
     def events(self) -> list[Event]:
-        """Villagers sent forward to walk there, or to put up or help build a
-        tower, a castle or a wall there, are on a job of their own, "forward",
-        which is no work. A fight is not: villagers set on a scout that came
-        for the hunt are not going anywhere. A forward walk is a `forward`
-        event rather than an `assign`, because its units need not be
-        villagers: a men-at-arms nobody gave a soldier's command reads like one,
-        and only work proves a villager."""
+        """Villagers sent forward are on a job of their own, "forward", which is
+        no work: walking there, putting up or helping to build anything there,
+        fighting there, or going for the enemy's sheep, boar or deer -- laming.
+        Gathering wood, gold or stone there is work like anywhere else. A
+        forward walk or fight is a `forward` event rather than an `assign`,
+        because its units need not be villagers: a men-at-arms nobody gave a
+        soldier's command reads like one, and only work proves a villager.
+        `what` says which of them a forward event is."""
         out: list[Event] = []
         for a in self.actions:
             t, kind, p = secs(a), a.type.name, a.payload
+            at = self.spot(a)
             if self.built(a):
                 b = Placed(t, building_name(p), a.position.x, a.position.y)
                 job = self.dropsite_job(b) or ("forward" if self.ahead(a) else None)
                 out.append(Event(t, "build", self.villagers(p.get("object_ids", [])),
-                                 job=job, building=b.name, site=(b.name, t)))
+                                 job=job, building=b.name, site=(b.name, t), at=at))
             elif kind == "WALL":
                 # A dragged wall is its own command, not a BUILD.
                 out.append(Event(t, "build", self.villagers(p.get("object_ids", [])),
-                                 job="forward" if self.ahead(a) else None, building=building_name(p)))
+                                 job="forward" if self.ahead(a) else None, building=building_name(p), at=at))
             elif kind == "ORDER":
                 ids = self.villagers(p.get("object_ids", []))
                 job, b = self.target(a) if ids else (None, None)
-                if job:
+                if not ids:
+                    continue
+                if self.ahead(a) and (job in LAMED or not job):
+                    what = "lame" if job else "build" if b else "fight"
+                    out.append(Event(t, "forward", ids, job="forward", building=b.name if b else None,
+                                     what=what, at=at))
+                elif job:
                     out.append(Event(t, "assign", ids, job=job, building=b.name if b else None,
-                                     site=(b.name, b.t) if b else None, target=p.get("target_id")))
-                elif b and self.ahead(a):
-                    out.append(Event(t, "forward", ids, job="forward", building=b.name))
+                                     site=(b.name, b.t) if b else None, target=p.get("target_id"), at=at))
             elif kind == "MOVE" and self.ahead(a):
                 ids = self.villagers(p.get("object_ids", []))
                 if ids:
-                    out.append(Event(t, "forward", ids, job="forward"))
+                    out.append(Event(t, "forward", ids, job="forward", what="walk", at=at))
             elif kind == "GATHER_POINT" and set(p.get("object_ids", [])) & self.tcs:
                 target = p.get("target_id")
                 out.append(Event(t, "rally", job=self.rally_job(a),
-                                 target=target if isinstance(target, int) and target >= 0 else None))
+                                 target=target if isinstance(target, int) and target >= 0 else None, at=at))
             elif kind == "RESEARCH":
                 out.append(Event(t, "research", ids=list(p.get("object_ids", [])),
                                  what=p.get("technology") or f"#{p.get('technology_id')}"))

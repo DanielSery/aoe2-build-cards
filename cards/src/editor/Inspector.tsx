@@ -10,7 +10,7 @@ import { SLOTS, TONES, addItem, addSection, count, dropItem,
          dropSection, dropStep, duplicateStep, findItem, findSection, findStep,
          mapSection, mapSlot, moveItem, moveSection, moveStep, text, toggleSlot,
          updateItem } from "../model/card";
-import type { Card, Item, RowNumbers, Tone, Where } from "../model/card";
+import type { Card, Item, Tone, Where } from "../model/card";
 import { ICONS, iconLabel, iconUrl } from "../icons";
 
 type Props = {
@@ -74,12 +74,6 @@ function CardPanel({ card, apply }: Pick<Props, "card" | "apply">) {
                onChange={(e) => apply((c) => ({ ...c, totals: e.target.checked }))} />
         <span>Show the running total under each number</span>
       </label>
-      <label className="field">Row numbers count</label>
-      <select className="wide" value={card.rowNumbers}
-              onChange={(e) => apply((c) => ({ ...c, rowNumbers: e.target.value as RowNumbers }))}>
-        <option value="steps">the rows</option>
-        <option value="villagers">the villagers at work after the row</option>
-      </select>
       <div className="row" style={{ marginTop: 12 }}>
         <button onClick={() => apply((c) => addSection(c, null))}>Add phase</button>
       </div>
@@ -101,11 +95,6 @@ function PhasePanel({ card, sectionId, apply, select, addRow }: Pick<Props, "car
               onChange={(e) => edit((s) => ({ ...s, tone: e.target.value as Tone }))}>
         {TONES.map(([tone, label]) => <option key={tone} value={tone}>{label}</option>)}
       </select>
-      <label className="row" style={{ marginTop: 10 }}>
-        <input type="checkbox" checked={section.numbered} style={{ width: "auto" }}
-               onChange={(e) => edit((s) => ({ ...s, numbered: e.target.checked }))} />
-        <span>Number the rows</span>
-      </label>
       <div className="row" style={{ marginTop: 12 }}>
         <button className="primary" onClick={() => addRow({ section: sectionId })}>Add row</button>
         <button onClick={() => apply((c) => moveSection(c, sectionId, -1))} title="Move up">↑</button>

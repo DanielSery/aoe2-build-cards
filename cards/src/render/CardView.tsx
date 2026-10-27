@@ -9,7 +9,7 @@
 import { useLayoutEffect, useRef } from "react";
 import type { JSX } from "react";
 import type { Card, Item, Part, Section, Slot, Step, Where } from "../model/card";
-import { minorIcons, movesAnyone, newSlot, numbering, slotIsEmpty, totals } from "../model/card";
+import { minorIcons, movesAnyone, newSlot, slotIsEmpty, totals } from "../model/card";
 import { iconLabel, iconUrl } from "../icons";
 
 export type Edit = {
@@ -193,9 +193,8 @@ function Chain({ places, step, section, edit, sums }: {
 
 /** A row: the new villagers, the ones moved off other work, and what the row
  *  only mentions — three columns. */
-function StepRow({ step, section, number, edit, sums }: {
-  step: Step; section: Section; number?: number;
-  edit?: Edit; sums: Record<string, string>;
+function StepRow({ step, section, edit, sums }: {
+  step: Step; section: Section; edit?: Edit; sums: Record<string, string>;
 }) {
   const where: Where = { section: section.id, step: step.id };
   const selected = same(edit?.selected ?? null, where);
@@ -216,7 +215,6 @@ function StepRow({ step, section, number, edit, sums }: {
                 event.dataTransfer.effectAllowed = "move";
               }}>⠿</span>
       )}
-      {section.numbered && <span className="step-no">{number}</span>}
       <span className="step-body">
         <span className="column column--new">
           <Chain step={step} section={section} edit={edit} sums={sums} places={[["to", step.to, "end"]]} />
@@ -241,14 +239,16 @@ function StepRow({ step, section, number, edit, sums }: {
 }
 
 /**
- * The moves line up down the card: every row with one has its new villagers'
- * column as wide as the widest such column on the card. Left out of the
- * measure are a row with no move — an age-up row's long label would push every
- * move on the card to the right — and a row whose move does not fit beside its
- * own new villagers even unaligned, since that move goes to a line of its own.
+ * The columns line up down the card: every move starts at one x and every
+ * row's extras at another. The new villagers' column is as wide as the widest
+ * on the card among rows with anything after it, and the moves' as the widest
+ * among rows with extras. Left out of each measure is a row with nothing after
+ * the column — one age-up label would push the whole card right — and a row
+ * that would not fit on one line even so, since what follows goes to a line
+ * of its own.
  *
  * Measured rather than laid out as a grid, because the rows sit in separate
- * phase boxes; set as a variable on the card itself, so the off-screen copy
+ * phase boxes; set as variables on the card itself, so the off-screen copy
  * the PNG is taken from measures and carries its own.
  */
 function useColumns(card: Card) {
@@ -256,19 +256,29 @@ function useColumns(card: Card) {
   useLayoutEffect(() => {
     const root = node.current;
     if (!root) return;
-    const widths = [...root.querySelectorAll<HTMLElement>(".step--moves > .step-body")].flatMap((body) => {
-      const fresh = body.querySelector<HTMLElement>(".column--new > .chain")!.offsetWidth;
-      const move = body.querySelector<HTMLElement>(".column--move")!;
-      const room = body.clientWidth - Number.parseFloat(getComputedStyle(move).marginLeft);
-      return fresh + move.offsetWidth <= room ? [fresh] : [];
+    const rows = [...root.querySelectorAll<HTMLElement>(".step-body")].map((body) => {
+      const width = (selector: string) => body.querySelector<HTMLElement>(selector)?.offsetWidth ?? 0;
+      const step = body.parentElement!.classList;
+      return { room: body.clientWidth, fresh: width(".column--new > .chain"), move: width(".column--move > .chain"),
+               extras: width(".extras"), moves: step.contains("step--moves"), mentions: step.contains("step--extras") };
     });
-    root.style.setProperty("--new-column", widths.length ? `${Math.max(...widths)}px` : "auto");
+    const gap = (selector: string) => {
+      const element = root.querySelector<HTMLElement>(selector);
+      return element ? Number.parseFloat(getComputedStyle(element).marginLeft) : 0;
+    };
+    const [beforeMove, beforeExtras] = [gap(".column--move"), gap(".extras")];
+    const widest = (widths: number[]) => (widths.length ? Math.max(...widths) : 0);
+    const fresh = widest(rows.filter((r) => (r.moves || r.mentions) && r.fresh + beforeMove + r.move <= r.room)
+      .map((r) => r.fresh));
+    const move = widest(rows.filter((r) => r.mentions
+      && Math.max(fresh, r.fresh) + beforeMove + r.move + beforeExtras + r.extras <= r.room).map((r) => r.move));
+    root.style.setProperty("--new-column", `${fresh}px`);
+    root.style.setProperty("--move-column", `${move}px`);
   }, [card]);
   return node;
 }
 
 export function CardView({ card, edit }: { card: Card; edit?: Edit }): JSX.Element {
-  const numbers = numbering(card);
   const sums = card.totals ? totals(card) : {};
   const node = useColumns(card);
   return (
@@ -289,8 +299,7 @@ export function CardView({ card, edit }: { card: Card; edit?: Edit }): JSX.Eleme
             <div className="phase-label">{section.label}</div>
             <div className="phase-steps">
               {section.steps.map((step) => (
-                <StepRow key={step.id} step={step} section={section} edit={edit} sums={sums}
-                         number={numbers[step.id]} />
+                <StepRow key={step.id} step={step} section={section} edit={edit} sums={sums} />
               ))}
               {edit && (
                 <button className="add-row" title="Add a row (Enter)"

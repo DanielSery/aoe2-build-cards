@@ -53,11 +53,7 @@ export type Step = {
   extras: Item[];
 };
 
-export type Section = { id: string; label: string; tone: Tone; numbered: boolean; steps: Step[] };
-
-/** What the circle on a row counts: the rows themselves, or the villagers the
- *  card has put to work once the row is done. */
-export type RowNumbers = "steps" | "villagers";
+export type Section = { id: string; label: string; tone: Tone; steps: Step[] };
 
 export type Card = {
   id: string;
@@ -66,7 +62,6 @@ export type Card = {
   subtitle: string;
   /** Draw the running villager total under each number. */
   totals: boolean;
-  rowNumbers: RowNumbers;
   sections: Section[];
   updated: number;
 };
@@ -116,7 +111,7 @@ export const movesAnyone = (step: Step): boolean =>
  *  named bands waiting to be filled is a real thing to want, and a blank row
  *  you did not ask for is one you have to delete. */
 export const newSection = (label = "New phase", tone: Tone = "neutral"): Section =>
-  ({ id: id(), label, tone, numbered: true, steps: [] });
+  ({ id: id(), label, tone, steps: [] });
 
 /** The phases every build order has, in order. A card can be given more or
  *  have them deleted, but this is what one starts as — the ages, and the
@@ -137,7 +132,6 @@ export const newCard = (name = "Untitled build"): Card => ({
   title: name,
   subtitle: "",
   totals: true,
-  rowNumbers: "steps",
   sections: PHASES.map(([label, tone]) => newSection(label, tone)),
   updated: Date.now(),
 });
@@ -434,26 +428,6 @@ export const findSection = (card: Card, at: Where): Section | null =>
 export const slotIsEmpty = (slot: Slot | null): boolean =>
   !slot || (!slot.label && slot.items.length === 0);
 
-/** The number a step wears. Sections that are not numbered have none, and a
- *  row count runs over the whole card rather than restarting per phase, the
- *  way the printed cards number them. Counting villagers, a row wears the sum
- *  of every work's figure once it is done — so a row that only moves
- *  villagers repeats the number above it, and one the card never put to work
- *  is not in it. */
-export function numbering(card: Card): Record<string, number> {
-  const out: Record<string, number> = {};
-  const numbered = new Set(card.sections.filter((s) => s.numbered).flatMap((s) => s.steps.map((st) => st.id)));
-  if (card.rowNumbers === "villagers") {
-    tally(card, (step, villagers) => { if (numbered.has(step.id)) out[step.id] = villagers; });
-    return out;
-  }
-  let n = 0;
-  for (const section of card.sections)
-    for (const step of section.steps)
-      if (numbered.has(step.id)) out[step.id] = ++n;
-  return out;
-}
-
 /** "All" where moved villagers go: everyone on the source's work, however many it was. */
 export const ALL = "All";
 
@@ -475,10 +449,6 @@ export const ALL = "All";
  * gets nothing, which is better than a figure that means nothing.
  */
 export function totals(card: Card): Record<string, string> {
-  return tally(card);
-}
-
-function tally(card: Card, after?: (step: Step, villagers: number) => void): Record<string, string> {
   const out: Record<string, string> = {};
   const running: Partial<Record<Job, number>> = {};
 
@@ -504,7 +474,6 @@ function tally(card: Card, after?: (step: Step, villagers: number) => void): Rec
         arrive(item, jobOf(step.moveTo!.items), moved);
       }
       for (const item of counts(step.to)) arrive(item, jobOf(step.to.items), value(item));
-      after?.(step, Object.values(running).reduce((sum, n) => sum + (n ?? 0), 0));
     }
   return out;
 }

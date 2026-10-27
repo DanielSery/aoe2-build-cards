@@ -35,6 +35,7 @@ BUILDINGS = {
     "outpost": 598, "palisade_wall": 72, "stone_wall": 117, "gate": 487,
     "wonder": 276, "folwark": 1734, "mule_cart": 1808, "donjon": 1665,
     "krepost": 1251, "feitoria": 1021, "caravanserai": 1754, "settlement": 2556,
+    "pasture": 1889,
 }
 
 UNITS = {

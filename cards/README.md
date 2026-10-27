@@ -1,7 +1,7 @@
 # AoE2 build-order cards
 
-A drawing tool for the build-order cards players share as images — numbered
-rows of icons, grouped into phases, exported as a PNG, or several cards at once
+A drawing tool for the build-order cards players share as images — rows of
+icons, grouped into phases, exported as a PNG, or several cards at once
 as a PDF.
 
 It is a static site. There is no server, no account and no simulation: the
@@ -64,16 +64,18 @@ python -m uvicorn replays.server:app --port 8030
 `npm run dev` and `npm run preview` pass `/api` through to it as well.
 
 Microsoft keeps replays for a few months, so an older game has none. The
-card covers the opening up to a minute into Castle Age, its rows numbered by
-the villagers at work rather than by row, and the two "Going" phases
-unnumbered — no villager is made while the age is researching, so one first
-sent to work then is written just before the age-up. Buildings,
+card covers the opening up to a minute into Castle Age. No villager is made
+while an age is researching, so one first sent to work then is written just
+before the age-up, and a Town Centre tech clicked then just after it.
+Villagers sent to the enemy — towers, a castle, a fight, laming — are
+*forward*, which is no work, until they are sent back to some. Buildings,
 techs, age times, gather points and which villagers were sent where come
 straight from the replay. **How many villagers** a row moves is partly inferred: the
 replay records every queue click, including the ones there was no food for,
 so the age-up row's "at N vils" is an estimate. A task a villager held for
-less than 15 seconds before being sent elsewhere is left out, and so are single
-villagers swapped back and forth inside a phase.
+less than 15 seconds, or given up before the villager could have walked
+there, is left out, and so are single villagers swapped back and forth inside
+a phase.
 
 ## The format
 
@@ -102,9 +104,9 @@ what is done on the way, drawn small; a move reads right to left.
 | **Source** | the work they were taken off. No number: *moved to* has it |
 | **Extras** | anything the row only mentions: the deer pushed in, a tech, a note |
 
-The moves line up down the card, and the extras keep to its right edge. A row
-too long for one line breaks before its move, and then before its extras —
-never in the middle of a column.
+The moves line up down the card, and so do the extras. A row too long for
+one line breaks before its move, and then before its extras — never in the
+middle of a column.
 
 Each place holds **icons**, **numbers** and optional **words**. In a place
 with a number, the first icon is the work and every icon after it is drawn
@@ -160,8 +162,6 @@ the card stays on the same line. Set it in the icon's panel on the right.
   place on the card, or click it and it lands wherever the selection is aiming
   — the banner at the top of the shelf says where. **All** beside the numbers
   is for where moved villagers go: everyone on the source's work moves.
-- **Row numbers** count the rows, or, picked in the Card panel, the
-  villagers at work once the row is done — every work's figure added up.
 - **Add a row** with the `+ row` strip at the foot of each phase, or press
   `Enter` — which adds one after whatever is selected. Either way the new row
   is selected, so the next click or drag has somewhere to go.

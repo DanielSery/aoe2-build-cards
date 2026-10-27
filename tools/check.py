@@ -190,7 +190,7 @@ def check_a_trip_forward_is_no_work(fail) -> None:
     from replays.game import Event
 
     opening = object.__new__(Opening)
-    opening.ages, opening.end = {}, 900.0
+    opening.ages, opening.end, opening.r = {}, 900.0, Stub(nodes={})
     opening.log = Stub(tcs=set(), start_villagers=[1, 2])
     opening.__dict__["spawns"] = []
     opening.events = [

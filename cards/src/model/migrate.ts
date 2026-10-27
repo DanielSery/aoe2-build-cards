@@ -204,7 +204,6 @@ function section(raw: unknown): Section {
     id: id(value.id),
     label: str(value.label, "Phase"),
     tone: TONE_KEYS.has(value.tone as Tone) ? (value.tone as Tone) : "neutral",
-    numbered: value.numbered !== false,
     // An empty phase is allowed, so an empty list is read as one rather than
     // quietly given a row back.
     steps: (Array.isArray(value.steps) ? value.steps : []).map(step),
@@ -220,7 +219,6 @@ export function normaliseCard(raw: unknown): Card | null {
     title: str(value.title),
     subtitle: str(value.subtitle),
     totals: value.totals !== false,
-    rowNumbers: value.rowNumbers === "villagers" ? "villagers" : "steps",
     updated: typeof value.updated === "number" ? value.updated : Date.now(),
     sections: value.sections.map(section),
   };

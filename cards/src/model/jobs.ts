@@ -15,14 +15,14 @@
 
 import type { IconItem, PlaceItem } from "./card";
 
-export type Job = "sheep" | "hunt" | "berries" | "farm" | "fish" | "food"
+export type Job = "sheep" | "hunt" | "berries" | "farm" | "pasture" | "fish" | "food"
   | "wood" | "straggler" | "gold" | "stone";
 
 const OF: Record<string, Job> = {
   "gaia-sheep": "sheep", "gaia-turkey": "sheep", "gaia-chicken": "sheep", "gaia-llama": "sheep",
   "gaia-boar": "hunt", "gaia-deer": "hunt",
   "gaia-berries": "berries",
-  "building-farm": "farm",
+  "building-farm": "farm", "building-pasture": "pasture",
   "gaia-fish": "fish", "unit-fishing_ship": "fish",
   "resource-food": "food",
 

@@ -61,18 +61,8 @@ check(atRest.join("|") === "end" && dragging.join("|") === "end|moved to|source|
   "empty places are drawn only while dragging",
   `row 7 showed ${atRest.join("|")} at rest and ${dragging.join("|")} while dragging`);
 
-check(await page.locator(".canvas .card .step-count").count() === 0,
-  "there is no number column", "a number column is still being drawn");
-
-// Measured on the export copy: the edited card pads its places to give drop
-// targets a hit area, and that padding is not part of the picture.
-const firstGap = await page.locator(".export-copy .card .step").first().evaluate((e) => {
-  const no = e.querySelector(".step-no").getBoundingClientRect();
-  const first = e.querySelector(".slot--to .item").getBoundingClientRect();
-  return Math.round(first.left - no.right);
-});
-check(firstGap === 14, "the number sits one gap after the row number",
-  `the gap after the row number is ${firstGap}px`);
+check(await page.locator(".canvas .card :is(.step-count, .step-no)").count() === 0,
+  "rows carry no number of their own", "a row number is still being drawn");
 
 // --- numbers carry their own value and the running total ------------------
 
@@ -87,22 +77,24 @@ check(JSON.stringify(numbers) === JSON.stringify(wanted),
   "each number totals its own work, and a move carries its villagers",
   `the numbers were ${JSON.stringify(numbers)}`);
 
-// Counting villagers, a row wears every work's figure added up. A move keeps
-// the total; the five sent to the tower go to no work the card counts, so the
-// number on where they went is what came off the hunt: make it 7 and 9 are left.
-await page.click(".canvas .card-head");
-await page.locator(".inspector label:has-text('Row numbers count') + select").selectOption("villagers");
-const byVillagers = await rows.evaluateAll((els) => els.slice(0, 6).map((e) => e.querySelector(".step-no")?.textContent));
+// The number where moved villagers go is what came off the source: the
+// hunt's 12 lose 3 to the stone and 5 to the tower, so one more new to it
+// makes 5 — and 3 once the tower takes 7.
+await row(6).locator(".grip").click();
+await page.keyboard.press("Enter");
+await page.click(".palette .number-btn >> nth=0");
+await page.fill(".palette input[type=search]", "boar");
+await page.click(".palette .icon-btn >> nth=0");
+const oneMore = row(7).locator(".slot--to .countbox i");
+const huntThen = await oneMore.textContent();
 await row(5).locator(".slot--moveTo .countbox").click();
 await page.locator(".inspector label:has-text('Number') + input").fill("7");
-const afterSeven = await row(5).locator(".step-no").textContent();
-await page.click(".topbar button:has-text('Undo')");
-await page.click(".topbar button:has-text('Undo')");
-check(JSON.stringify(byVillagers) === JSON.stringify(["6", "10", "16", "16", "16", "11"]),
-  "row numbers can count villagers, and a move keeps the total",
-  `the first six rows were numbered ${JSON.stringify(byVillagers)}, wanted 6, 10, 16, 16, 16, 11`);
-check(afterSeven === "9", "the number where moved villagers go takes them off the source",
-  `7 off the hunt left the row at ${afterSeven}, wanted 9`);
+const huntNow = await oneMore.textContent();
+for (let i = 0; i < 4; i++) await page.click(".topbar button:has-text('Undo')");
+await page.fill(".palette input[type=search]", "");
+check(huntThen === "5" && huntNow === "3" && await rows.count() === 9,
+  "the number where moved villagers go takes them off the source",
+  `one more on the hunt read ${huntThen}, then ${huntNow} with 7 to the tower; wanted 5 and 3`);
 
 // "4 boar": a number and its icon are one thing, and what is done on the way
 // after the work is drawn small.
@@ -114,14 +106,14 @@ check(numberRight === iconLeft && wayTile < workTile,
   "a number touches its icon, and what is done on the way is small",
   `the number ends at ${numberRight} and the icon starts at ${iconLeft}; tiles ${workTile} and ${wayTile}px`);
 
-// Three columns: every move starts at one x, and every row's extras end at one.
+// Three columns: every move starts at one x, and so does every row's extras.
 const edgesOf = (rows, part, edge) => page.locator(`.export-copy .card ${rows}`).evaluateAll((els, [part, edge]) =>
   els.map((e) => Math.round(e.querySelector(part).getBoundingClientRect()[edge])), [part, edge]);
 const moveLefts = await edgesOf(".step--moves", ".column--move .slot", "left");
-const extrasRights = await edgesOf(".step--extras", ".extras", "right");
-check(moveLefts.length === 4 && new Set(moveLefts).size === 1 && extrasRights.length === 2 && new Set(extrasRights).size === 1,
+const extrasLefts = await edgesOf(".step--extras", ".extras", "left");
+check(moveLefts.length === 4 && new Set(moveLefts).size === 1 && extrasLefts.length === 2 && new Set(extrasLefts).size === 1,
   "moves and extras each form a column",
-  `moves started at ${moveLefts.join(", ")} and extras ended at ${extrasRights.join(", ")}`);
+  `moves started at ${moveLefts.join(", ")} and extras at ${extrasLefts.join(", ")}`);
 
 // --- a caption must not move anything -------------------------------------
 
@@ -146,7 +138,7 @@ await page.click(".topbar button:has-text('Undo')");
 
 // --- the shelf, by click and by drag --------------------------------------
 
-await row(0).locator(".step-no").click();
+await row(0).locator(".grip").click();
 const before = await iconsIn(0, "to").count();
 await page.click(".palette .icon-btn >> nth=0");
 check(await iconsIn(0, "to").count() === before + 1,
@@ -179,7 +171,7 @@ check(!panel.includes("Number the rows"),
 await page.keyboard.press("Delete");
 check(await iconsIn(2, "from").count() === 0, "Del removes the selected item", "Del did nothing");
 
-await row(2).locator(".step-no").click();
+await row(2).locator(".grip").click();
 await page.keyboard.press("Delete");
 check(await rows.count() === 8, "Del removes the selected row", `still ${await rows.count()} rows`);
 await page.click(".topbar button:has-text('Undo')");
@@ -293,11 +285,12 @@ await page.click(".topbar button:has-text('Undo')");
 // the card out of line with it. Left in place for the export, which has to
 // break the row exactly as the card does.
 await row(2).locator(".slot--to").click({ position: { x: 3, y: 3 } });
-for (let i = 0; i < 12; i++) await page.click(".palette .icon-btn >> nth=0");
-const broken = await page.locator(".export-copy .card .step").nth(2).evaluate((e) => {
-  const [fresh, move] = [".column--new", ".column--move"].map((c) => e.querySelector(c).getBoundingClientRect());
+for (let i = 0; i < 16; i++) await page.click(".palette .icon-btn >> nth=0");
+const broken = await page.waitForFunction(() => {
+  const step = document.querySelectorAll(".export-copy .card .step")[2];
+  const [fresh, move] = [".column--new", ".column--move"].map((c) => step.querySelector(c).getBoundingClientRect());
   return move.top >= fresh.bottom - 1;
-});
+}, null, { timeout: 5000 }).then(() => true, () => false);
 const stillLined = await edgesOf(".step--moves", ".column--move .slot", "left");
 check(broken && stillLined.length === 4 && new Set(stillLined.slice(1)).size === 1,
   "a row too long for one line breaks before its move, and the other moves stay in line",
@@ -331,7 +324,7 @@ check(Math.abs(w - box.w * SCALE) <= 2 && Math.abs(h - box.h * SCALE) <= 2,
   `the PNG is ${w}×${h}, the card's own size at ${SCALE}×`,
   `PNG ${w}×${h} against a card of ${box.w}×${box.h} — the export reflowed`);
 
-for (let i = 0; i < 12; i++) await page.click(".topbar button:has-text('Undo')");
+for (let i = 0; i < 16; i++) await page.click(".topbar button:has-text('Undo')");
 
 // --- zoom, which the export must not see ----------------------------------
 
@@ -348,7 +341,7 @@ check(await level() === "100%", "the level resets", `reset left it at ${await le
 
 // Leave a row selected, so the screenshot shows the row form and not just the
 // card panel — that form is the thing most likely to regress unseen.
-await row(4).locator(".step-no").click();
+await row(4).locator(".grip").click();
 await page.screenshot({ path: "editor.png", fullPage: false });
 
 // --- several cards as one PDF ---------------------------------------------
@@ -359,7 +352,7 @@ const exportBox = () => page.locator(".export-copy .card").evaluate((node) => {
   const rect = node.getBoundingClientRect();
   return { w: Math.round(rect.width), h: Math.round(rect.height) };
 });
-for (let i = 0; i < 4; i++) await page.keyboard.press("Enter");
+for (let i = 0; i < 4; i++) await page.click(".inspector button:has-text('Duplicate')");
 const long = await exportBox();
 const longRows = await page.locator(".export-copy .card").evaluate((card) => {
   const box = card.getBoundingClientRect();

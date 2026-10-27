@@ -19,14 +19,12 @@ export function sampleCard(): Card {
     title: "MAA + Tower",
     subtitle: "18 pop + loom",
     totals: true,
-    rowNumbers: "steps",
     updated: Date.now(),
     sections: [
       {
         id: crypto.randomUUID(),
         label: "Dark Age",
         tone: "dark",
-        numbered: true,
         steps: [
           row(newStep(newSlot([count("6"), icon("gaia-sheep")])), {
             extras: [icon("building-house"), icon("building-house")],
@@ -49,7 +47,6 @@ export function sampleCard(): Card {
         id: crypto.randomUUID(),
         label: "Going Feudal",
         tone: "transition",
-        numbered: true,
         steps: [
           row(newStep(), {
             moveTo: newSlot([count("3"), icon("resource-stone"), { ...icon("resource-gold"), caption: "50" }]),
@@ -67,7 +64,6 @@ export function sampleCard(): Card {
         id: crypto.randomUUID(),
         label: "Feudal Age",
         tone: "feudal",
-        numbered: false,
         steps: [
           newStep(newSlot([icon("unit-man_at_arms")], "Make MAA")),
           newStep(newSlot([icon("tech-loom")], "Research Loom")),

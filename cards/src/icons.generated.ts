@@ -36,6 +36,7 @@ export const ICONS: IconEntry[] = [
   { key: "building-mule_cart", label: "Mule Cart", category: "building", age: "Dark Age" },
   { key: "building-outpost", label: "Outpost", category: "building", age: "Dark Age" },
   { key: "building-palisade_wall", label: "Palisade Wall", category: "building", age: "Dark Age" },
+  { key: "building-pasture", label: "Pasture", category: "building", age: "Dark Age" },
   { key: "building-settlement", label: "Settlement", category: "building", age: "Dark Age" },
   { key: "building-town_center", label: "Town Centre", category: "building", age: "Dark Age" },
   { key: "building-archery_range", label: "Archery Range", category: "building", age: "Feudal Age" },
