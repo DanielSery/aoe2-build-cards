@@ -95,6 +95,11 @@ GAIA = {
     "turkey": ["Turkey AoE2DE.png"],
 }
 
+# The game's own buttons, for what a card says that no unit or building does.
+# A villager sent at the enemy is "forward", and the aggressive stance is the
+# button the game has for going looking for a fight.
+COMMANDS = {"forward": ["AoE2 Aggressive Stance.png"]}
+
 # Icons cut out of a bigger picture. The box is a *fraction* of the source,
 # because the wiki serves whatever size it has rather than the one asked for;
 # whatever is transparent around the result is trimmed off after. The
@@ -109,7 +114,7 @@ CATEGORIES = [("resource", "Resources"), ("building", "Buildings"),
 
 # Which shelf a key's prefix sits on. Gaia shares the resources' shelf, but
 # keeps its own prefix: the prefix is in every saved card's icon keys.
-SHELF = {"gaia": "resource"}
+SHELF = {"gaia": "resource", "command": "unit"}
 
 AGES = {1: "Dark Age", 2: "Feudal Age", 3: "Castle Age", 4: "Imperial Age"}
 
@@ -192,7 +197,7 @@ def plan() -> tuple[dict[str, str], list[Row]]:
             rows.append(("tech", slug(label), label, age))
 
     print("resolving wiki art…", flush=True)
-    for category, wanted in (("resource", RESOURCES), ("gaia", GAIA)):
+    for category, wanted in (("resource", RESOURCES), ("gaia", GAIA), ("command", COMMANDS)):
         for key, titles in wanted.items():
             found = wiki_thumbnails({t: t for t in titles}, 256)
             hit = next((found[t] for t in titles if t in found), None)

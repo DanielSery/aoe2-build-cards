@@ -212,8 +212,8 @@ def check_a_trip_forward_is_no_work(fail) -> None:
 
     rows = [(read(step["moveTo"]), read(step["from"])) for step in opening.card("x", "", "")["sections"][0]["steps"]
             if step["from"]]
-    trip = ((["2", building_icon("Watch Tower")], "forward"), (["resource-wood"], ""))
-    back = ((["2", "resource-gold"], ""), ([], "forward"))
+    trip = ((["2", "command-forward", building_icon("Watch Tower")], ""), (["resource-wood"], ""))
+    back = ((["2", "resource-gold"], ""), (["command-forward"], ""))
     if rows[:2] != [trip, back]:
         fail(f"the moves read {rows}, wanted {[trip, back]} first")
 

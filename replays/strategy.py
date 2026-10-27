@@ -7,12 +7,14 @@ forward, a douche (the starting Town Centre deleted and one built forward),
 extra Town Centres, and how soon after Castle Age Imperial was clicked. Each is a plan with a span of time. Plans that overlap inside one age
 are listed with a comma; the next one after an arrow.
 
-A unit is named as the upgrade its line had when it was queued — scouts, light
+A unit is named as the upgrade its line had when it was made — scouts, light
 cavalry, hussars — because a replay queues the line's first unit whatever has
-been researched, and the upgrade is a research of the same name. Units are
-counted off queue clicks, which are recorded with or without the resources to
-pay for them (see `card.py`), so a count is an upper bound. The thresholds
-below are judgement, not measurement.
+been researched, and the upgrade is a research of the same name. A unit is
+dated by when it came out and an upgrade by when it was done: the click plus
+the game data's time, which is what the replay cannot say. Units are counted
+off queue clicks, which are recorded with or without the resources to pay for
+them (see `card.py`), so a count is an upper bound and a date the earliest it
+could have been. The thresholds below are judgement, not measurement.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ import math
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 
-from .game import CASTLES, PRODUCTION, TOWERS, UNIT_LINES, PlayerLog, Replay, secs
+from .game import CASTLES, PRODUCTION, TOWERS, UNIT_LINES, PlayerLog, Replay, research_seconds, secs, train_seconds
 
 AGES = ("FEUDAL_AGE", "CASTLE_AGE", "IMPERIAL_AGE")
 SIEGE_WORKSHOP = 49
@@ -73,14 +75,14 @@ def strategy(replay: Replay, number: int, enemies: set[int]) -> str:
 
 
 def _upgrades(log: PlayerLog, end: float) -> dict[str, list[tuple[float, str]]]:
-    """line -> [(when, upgrade)], in the order researched. The last click of
-    each: one without the resources is recorded too, and none can follow the
-    one that starts the research."""
+    """line -> [(when done, upgrade)], in the order researched. Off the last
+    click of each: one without the resources is recorded too, and none can
+    follow the one that starts the research."""
     clicked: dict[str, float] = {}
     for a in log.actions:
         name = a.payload.get("technology")
         if a.type.name == "RESEARCH" and name in UNIT_LINES and secs(a) <= end:
-            clicked[name] = secs(a)
+            clicked[name] = secs(a) + research_seconds(a.payload)
     out: dict[str, list[tuple[float, str]]] = defaultdict(list)
     for name, t in sorted(clicked.items(), key=lambda kv: kv[1]):
         out[UNIT_LINES[name]["line"]].append((t, name))
@@ -118,12 +120,12 @@ def _units(log: PlayerLog, age, stages: list[float], end: float) -> list[Plan]:
     versions: dict[tuple[int, str], Counter] = defaultdict(Counter)
     spans: dict[tuple[int, str], list[float]] = {}
     for a in log.actions:
-        t = secs(a)
-        if t > end:
+        if secs(a) > end:
             break
         unit = a.payload.get("unit")
         if a.type.name != "DE_QUEUE" or not unit:
             continue
+        t = secs(a) + train_seconds(a.payload)
         line = UNIT_LINES.get(unit) or {"line": unit, "unique": False, "building": None}
         if line["line"] in NOT_A_PLAN or line["building"] == SIEGE_WORKSHOP:
             continue

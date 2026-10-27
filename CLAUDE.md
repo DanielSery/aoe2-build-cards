@@ -272,6 +272,20 @@ and `npm run preview` proxy `/api` to it.
   food come first, and none comes after the one that started the research: in
   144 age-ups not one fell inside its research. Counting back from the landing
   by the nominal time instead dates a Persian or Malay click too early.
+- **A card dates things by when they happened, not when they were asked
+  for.** A replay has the clicks, so the rest is the click plus the game
+  data's time (`game.research_seconds`, `train_seconds`): a "Going" band runs
+  from the research's start — the click, or later if villagers queued before
+  it were still to come out, which the nominal time back from the landing
+  says — to the landing; a Town Centre tech is a row when it was done, off its
+  last click, since none follows the one that starts it, and one clicked
+  before an age-up is done before that research starts, as the Town Centre
+  does one thing at a time; another building's tech is mentioned when it was
+  done; a soldier when it came out; and the strategy line dates units and
+  upgrades the same way. Civ bonuses to research and training are not read,
+  and a queue click without the resources still counts, so a date is the
+  earliest it could have been. Villagers were always dated by when they came
+  out (`spawns`).
 - **mgz misreads `SPECIAL` and `UNGARRISON` unit ids** by a byte (an id times
   256, plus one), so `created_by` skips them. In most games the result is over
   a million and filtered anyway; on Socotra, whose ids are small, one
@@ -349,8 +363,9 @@ and `npm run preview` proxy `/api` to it.
   is on the pasture, a job and a figure of its own, drawn with its own icon.
 - **Villagers sent to the enemy are forward, and forward is no work.** A
   tower rush, a castle drop, a douche, a forward barracks: the villagers who
-  walk there are taken off their work on the card — "10 tower forward ←
-  sheep", the place said in words because it has no icon of its own — and
+  walk there are taken off their work on the card — "10 forward tower ←
+  sheep", forward wearing the game's own aggressive-stance button
+  (`command-forward`, the one icon the fetcher takes for a command) — and
   come back off it — "9 stone ← forward" — when they are next given work at
   home or at the enemy's gold. A walk is read off `MOVE` commands to a forward
   spot, a fight off a right-click there on anything that is not one's own
@@ -371,14 +386,14 @@ and `npm run preview` proxy `/api` to it.
   one first put to work in a Going band is written at the end of the band
   before (`Opening._before_going`). Of 206 such villagers over 88 cards, about
   half were still in the Town Centre's queue at the click — which puts the
-  age-up behind them, so "at N vils" counts when the research starts, not at
-  the click — most of the rest had stood idle, and 15 came from a second Town
-  Centre, which really can train during the research; the card leaves the
-  band to moves anyway. So is a Town Centre tech clicked during the
-  research: the queue puts it behind the age-up, so its row is the first of
-  the next age (`Opening._after_going`). Units made are mentioned, in the
-  extras of the row being worked when the first of them was queued in that
-  phase, like a tech from any other building.
+  age-up behind them, which is why the band starts when the research does —
+  most of the rest had stood idle, and 15 came from a second Town Centre,
+  which really can train during the research; the card leaves the band to
+  moves anyway. So is a Town Centre tech clicked during the research: the
+  queue puts it behind the age-up, so its row comes after the landing
+  (`Opening._tc_start`). Units made are mentioned, in the extras of the row
+  being worked when the first of them came out in that phase, like a tech
+  from any other building.
 - **A task held under 15 seconds, or given up before the villager got there,
   never happened** (`card.BRIEF`, `_begun`). A villager sent somewhere and
   sent on again sooner than that — a misclick, a change of mind, a gather

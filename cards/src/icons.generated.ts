@@ -185,6 +185,7 @@ export const ICONS: IconEntry[] = [
   { key: "unit-white_feather_guard", label: "White Feather Guard", category: "unit", age: "Castle Age" },
   { key: "unit-woad_raider", label: "Woad Raider", category: "unit", age: "Castle Age" },
   { key: "unit-xianbei_raider", label: "Xianbei Raider", category: "unit", age: "Castle Age" },
+  { key: "command-forward", label: "Forward", category: "unit" },
   { key: "tech-feudal-age", label: "Feudal Age", category: "tech", age: "Dark Age" },
   { key: "tech-loom", label: "Loom", category: "tech", age: "Dark Age" },
   { key: "tech-arson", label: "Arson", category: "tech", age: "Feudal Age" },

@@ -26,7 +26,7 @@ from .game import (AGE_TECHS, CASTLES, DATA, DROPSITES, FIELDS, PRODUCTION, TOWE
 ICON_DIR = Path(__file__).resolve().parents[1] / "cards" / "public" / "icons" / "aoe2"
 ICON_KEYS = {p.stem for p in ICON_DIR.glob("*.png")}
 
-JOB_ICON = {"sheep": "gaia-sheep", "hunt": "gaia-boar", "berries": "gaia-berries",
+JOB_ICON = {"forward": "command-forward", "sheep": "gaia-sheep", "hunt": "gaia-boar", "berries": "gaia-berries",
             "straggler": "gaia-straggler", "wood": "resource-wood", "gold": "resource-gold",
             "stone": "resource-stone", "farm": "building-farm", "pasture": "building-pasture",
             "fish": "gaia-fish"}
@@ -139,12 +139,9 @@ def _step(to: list[dict], label: str = "", extras: list[dict] | None = None) -> 
 
 def _work(job: str, villagers: int = 0, via: list[dict] | None = None) -> dict:
     """A place: how many, the work, then what went up on the way. Forward is
-    no work and has no icon of its own, so it is said in words after whatever
-    went up there: "5 tower forward"."""
-    items = [count(villagers)] if villagers else []
-    if job != "forward":
-        items.append(icon(JOB_ICON[job]))
-    return _place(items + (via or []), "forward" if job == "forward" else "")
+    no work, so it wears the game's own aggressive-stance button, which names
+    none: "5 forward tower"."""
+    return _place(([count(villagers)] if villagers else []) + [icon(JOB_ICON[job])] + (via or []))
 
 
 def _unit(row: dict, step: dict) -> dict:
@@ -240,30 +237,34 @@ class Opening:
         self.r = replay
         self.log = PlayerLog(replay, number, enemies)
         self.events = self.log.events()
-        self.ages = self._ages()
+        self.ages, self.clicked = self._ages()
         if "castle" in self.ages:
             self.end = self.ages["castle"][1] + CASTLE_TAIL
         else:
             self.end = self.ages["feudal"][1] + 300 if "feudal" in self.ages else 900.0
 
-    def _ages(self) -> dict[str, tuple[float, float]]:
-        """age -> (click, landing). The landing is the game's own message; the
-        click is the last one before it. Clicks without the food are recorded
-        too, but none comes after the one that starts the research: in 144
-        age-ups not one fell inside its research time. Reading it off the
-        nominal time instead dates a Persian or Malay click too early, since
-        they research faster."""
+    def _ages(self) -> tuple[dict[str, tuple[float, float]], dict[str, float]]:
+        """age -> (research started, landing), and age -> click. The landing is the game's own
+        message; the click is the last one before it. Clicks without the food
+        are recorded too, but none comes after the one that starts the
+        research: in 144 age-ups not one fell inside its research time.
+        Reading the click off the nominal time instead dates a Persian or
+        Malay click too early, since they research faster. The research
+        starts at the click, or later if villagers queued before it were still
+        to come out -- the nominal time back from the landing says when, and
+        in 101 of those 144 one was."""
         names = {"FEUDAL_AGE": "feudal", "CASTLE_AGE": "castle", "IMPERIAL_AGE": "imperial"}
         landed: dict[str, float] = {}
         for u in self.r.match.uptimes:
             if u.player is self.log.player and u.age.name in names:
                 landed.setdefault(names[u.age.name], u.timestamp.total_seconds())
-        out = {}
+        out, clicked = {}, {}
         for age, landing in landed.items():
             clicks = [e.t for e in self.events
                       if e.kind == "research" and AGE_TECHS.get(e.what) == age and e.t <= landing]
-            out[age] = (clicks[-1] if clicks else landing - AGE_SECONDS[age], landing)
-        return out
+            clicked[age] = clicks[-1] if clicks else landing - AGE_SECONDS[age]
+            out[age] = (max(clicked[age], landing - AGE_SECONDS[age]), landing)
+        return out, clicked
 
     def section_of(self, t: float) -> str:
         name = "Dark Age"
@@ -279,20 +280,30 @@ class Opening:
     # ---------------------------------------------------------- villagers
 
     def _busy(self) -> list[tuple[float, float]]:
-        spans = [(max(click, landing - AGE_SECONDS[age]), landing) for age, (click, landing) in self.ages.items()]
-        loom = next((self._after_going(e.t) for e in self.events
-                     if e.kind == "research" and e.what == "Loom" and set(e.ids) & self.log.tcs), None)
-        if loom is not None:
-            spans.append((loom, loom + 25))
+        spans = list(self.ages.values())
+        loom = [e for e in self.events if e.kind == "research" and e.what == "Loom" and set(e.ids) & self.log.tcs]
+        if loom:
+            start = self._tc_start(loom[-1].t)
+            spans.append((start, start + loom[-1].takes))
         return sorted(spans)
 
-    def _after_going(self, t: float) -> float:
-        """When a Town Centre tech clicked at `t` was researched: one clicked
-        while an age is researching waits behind it in the queue."""
+    def _tc_start(self, t: float) -> float:
+        """When a Town Centre tech clicked at `t` started: one clicked after an
+        age-up waits behind it in the queue until the age lands."""
         for age in ("feudal", "castle"):
-            if age in self.ages and self.ages[age][0] <= t < self.ages[age][1]:
+            if age in self.ages and self.clicked[age] <= t < self.ages[age][1]:
                 return self.ages[age][1]
         return t
+
+    def _tc_done(self, t: float, takes: float) -> float:
+        """When a Town Centre tech clicked at `t` was done. One clicked before
+        an age-up was done before that research started, however the estimate
+        of either falls: the Town Centre does one thing at a time."""
+        begun = self._tc_start(t)
+        for start, _ in self.ages.values():
+            if begun < start < begun + takes:
+                return start - 0.001
+        return begun + takes
 
     @cached_property
     def spawns(self) -> list[tuple[float, int | None]]:
@@ -570,7 +581,10 @@ class Opening:
                     target = row
             target[part].append((t, item))
 
-        walled, researched, queued = set(), set(), set()
+        # A tech is dated by its last click, since none can follow the one
+        # that starts it, and drawn when it is done; a unit when it comes out.
+        last = {e.what: e for e in self.events if e.kind == "research" and e.t <= self.end}
+        walled, queued = set(), set()
         for e in self.events:
             if e.t > self.end:
                 break
@@ -583,24 +597,24 @@ class Opening:
                     walled.add((self.section_of(e.t), e.building))
                 key = building_icon(e.building)
                 attach(e.t, icon(key) if key else text(e.building), "built")
-            elif e.kind == "research" and e.what not in AGE_TECHS and e.what not in researched:
-                researched.add(e.what)
+            elif e.kind == "research" and e.what not in AGE_TECHS and last[e.what] is e:
                 key = tech_icon(e.what)
                 item = icon(key) if key else text(e.what)
                 if e.what in TOWN_CENTRE_TECHS or set(e.ids) & self.log.tcs:
                     # The Town Centre's work for that while, so a step of its
                     # own like an age-up, not a mention on someone else's.
-                    tech = _row(self._after_going(e.t), None, None)
+                    done = self._tc_done(e.t, e.takes)
+                    tech = _row(done, None, None)
                     tech["research"] = True
-                    tech["extras"].append((e.t, item))
+                    tech["extras"].append((done, item))
                     rows.append(tech)
                 else:
-                    attach(e.t, item, "extras")
+                    attach(e.t + e.takes, item, "extras")
             elif (e.kind == "queue" and e.what != "Villager" and not set(e.ids) & self.log.tcs
-                  and (self.section_of(e.t), e.what) not in queued):
+                  and (self.section_of(e.t + e.takes), e.what) not in queued):
                 # Soldiers are what the row mentions, not where villagers went.
-                queued.add((self.section_of(e.t), e.what))
-                attach(e.t, icon(unit_icon(e.what)) if unit_icon(e.what) else text(e.what), "extras")
+                queued.add((self.section_of(e.t + e.takes), e.what))
+                attach(e.t + e.takes, icon(unit_icon(e.what)) if unit_icon(e.what) else text(e.what), "extras")
         return sorted(rows, key=lambda r: r["t"])
 
     def _drop_swaps(self, rows: list[dict]) -> list[dict]:
@@ -660,11 +674,8 @@ class Opening:
 
         for age, going in (("feudal", "Going Feudal"), ("castle", "Going Castle")):
             if age in self.ages:
-                click, landing = self.ages[age]
-                # Counted when the research starts: the villagers queued
-                # before the click come out first.
-                started = max(click, landing - AGE_SECONDS[age])
-                label = f"click {clock(click)} at {self.population_at(started)} vils, up {clock(landing)}"
+                started, landing = self.ages[age]
+                label = f"{clock(started)} → {clock(landing)} at {self.population_at(started)} vils"
                 sections[going]["steps"].insert(0, _step([icon(AGE_ICON[age])], label=label))
 
         ages = ", ".join(f"{age.title()} {clock(landing)}" for age, (_, landing) in self.ages.items()

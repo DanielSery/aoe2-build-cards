@@ -69,6 +69,17 @@ def job_of_type(type_id: int) -> str | None:
     return entry["job"]
 
 
+def research_seconds(payload: dict) -> float:
+    """How long a research click's tech takes, off the game data: the click
+    is when it was asked for, and a card wants when it was done."""
+    return (DATA.techs.get(payload.get("technology_id")) or {}).get("research_time", 0)
+
+
+def train_seconds(payload: dict) -> float:
+    """How long a queue click's unit takes to train, off the game data."""
+    return (DATA.unit_by_id(payload.get("unit_id")) or {}).get("train_time", 0)
+
+
 def building_name(payload: dict) -> str:
     known = payload.get("building") or NEW_BUILDINGS.get(payload.get("building_id"))
     return known or f"#{payload.get('building_id')}"
@@ -108,6 +119,7 @@ class Event:
     site: tuple[str, float] | None = None  # the building placed or worked on, and when it was placed
     target: int | None = None
     at: tuple[float, float] | None = None  # where the command sends its units
+    takes: float = 0.0  # a research or a unit: the game data's time for it
 
 
 class Replay:
@@ -395,8 +407,10 @@ class PlayerLog:
                                  target=target if isinstance(target, int) and target >= 0 else None, at=at))
             elif kind == "RESEARCH":
                 out.append(Event(t, "research", ids=list(p.get("object_ids", [])),
-                                 what=p.get("technology") or f"#{p.get('technology_id')}"))
+                                 what=p.get("technology") or f"#{p.get('technology_id')}",
+                                 takes=research_seconds(p)))
             elif kind == "DE_QUEUE":
                 out.append(Event(t, "queue", ids=list(p.get("object_ids", [])),
-                                 what=p.get("unit") or f"#{p.get('unit_id')}", amount=p.get("amount", 1)))
+                                 what=p.get("unit") or f"#{p.get('unit_id')}", amount=p.get("amount", 1),
+                                 takes=train_seconds(p)))
         return out
