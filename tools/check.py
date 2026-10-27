@@ -346,6 +346,23 @@ def check_a_mill_goes_with_the_berries(fail) -> None:
         fail(f"the rows were {rows}, wanted {wanted}")
 
 
+def check_a_gather_point_moved_for_the_villager(fail) -> None:
+    """A gather point moved a few seconds before a villager's estimated
+    spawn was moved because that villager had come out, so it went where the
+    gather point was before -- unless one Town Centre could not have trained
+    it by the move. Moved well before, it is where the villager went."""
+    from types import SimpleNamespace as Stub
+    from replays.card import Opening
+    from replays.game import Event
+
+    opening = object.__new__(Opening)
+    opening.events = [Event(100.0, "rally", job="stone"), Event(147.0, "rally", job="gold"),
+                      Event(148.0, "rally", job="gold")]
+    got = [opening.rally_at(t, previous).job for t, previous in ((150.0, 120.0), (160.0, 120.0), (150.0, 140.0))]
+    if got != ["stone", "gold", "gold"]:
+        fail(f"the villagers went to {got}, wanted stone, gold, gold")
+
+
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built,
           check_a_card_names_new_villagers_once,
@@ -354,7 +371,8 @@ CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_loom_waits_for_the_villagers_ahead,
           check_a_move_joining_new_villagers_shares_their_place,
           check_an_empty_selection_is_the_last_units_commanded,
-          check_a_mill_goes_with_the_berries)
+          check_a_mill_goes_with_the_berries,
+          check_a_gather_point_moved_for_the_villager)
 
 
 def main() -> int:

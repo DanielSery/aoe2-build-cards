@@ -48,6 +48,7 @@ PHASES = [("Dark Age", "dark"), ("Going Feudal", "transition"), ("Feudal Age", "
 VILLAGER_SECONDS = 25.0
 VILLAGER_SPEED = DATA.unit_by_id(83)["speed"]  # tiles a second
 SPACING = 0.9       # of a villager's time: slack for a faster Town Centre, as Persian age-ups run 5-9% under the nominal time
+REACTED = 5.0       # a gather point moved this soon before a villager's estimated spawn was moved for it
 BRIEF = 30.0        # a task replaced this soon, or before the villager got there, is not on the card
 ERRAND = 15.0       # but one to gold, stone or a building site is from this soon: "50 stone", a camp for others
 ERRANDS = {"gold", "stone"}
@@ -411,14 +412,22 @@ class Opening:
             last = max(last, t)
         return [s for s in out if s[0] <= self.end]
 
-    def rally_at(self, t: float) -> Event | None:
-        rally = None
-        for e in self.events:
-            if e.t > t:
-                break
-            if e.kind == "rally":
-                rally = e
-        return rally
+    def rally_at(self, t: float, previous: float) -> Event | None:
+        """The gather point a villager that came out at `t` walked to, the one
+        before it at `previous`. A gather point moved just before `t` most
+        likely moved because this villager had come out: a player sets the
+        next one's the moment one appears, and `spawns` places a villager as
+        late as it can. So when it was moved within `REACTED` of `t`, and one
+        Town Centre could have trained the villager by then, it went where the
+        gather point was before."""
+        rallies = [e for e in self.events if e.kind == "rally" and e.t <= t]
+        moved = len(rallies)
+        while moved > 1 and rallies[moved - 2].job == rallies[-1].job:
+            moved -= 1
+        if (0 < moved - 1 and t - rallies[moved - 1].t <= REACTED
+                and rallies[moved - 1].t - previous >= SPACING * VILLAGER_SECONDS):
+            return rallies[moved - 2]
+        return rallies[-1] if rallies else None
 
     def population_at(self, t: float) -> int:
         return len(self.log.start_villagers) + sum(1 for s, _ in self.spawns if s <= t)
@@ -457,7 +466,7 @@ class Opening:
         for v in self.log.start_villagers:
             plans[v].append((0.0, "idle", None, None, False, None))
         for k, (t, i) in enumerate(self.spawns):
-            rally = self.rally_at(t)
+            rally = self.rally_at(t, self.spawns[k - 1][0] if k else -math.inf)
             raw, target, at = (rally.job, rally.target, rally.at) if rally else (None, None, None)
             plans[i if i is not None else f"unseen{k}"].append((t, card_job(raw) or "idle", raw, target, False, at))
         for e in self.events:

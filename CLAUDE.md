@@ -277,6 +277,18 @@ and `npm run preview` proxy `/api` to it.
   unit given soldiers' commands (formation, patrol, attack-move…) that never
   did a villager's work all game; villagers selected with soldiers get those
   commands too, which is why it is the work that decides.
+- **A gather point moved just before a villager came out was moved for
+  it** (`Opening.rally_at`, `REACTED`). A villager the replay never sends
+  anywhere walked to the gather point in force when it came out, and that
+  moment is `spawns`' estimate, which runs late: it places a villager as late
+  as the ones after it allow. A player sets the next villager's gather point
+  the moment one appears, so an estimate a few seconds late reads the new
+  one — two to the stone and two to the gold came out as one and three, the
+  second stone villager put just after the gather point moved to the gold.
+  Moved within 5 seconds of the estimate, when one Town Centre could have
+  trained the villager by then, the gather point before it is the one read.
+  That is 215 of 5803 spawns over 30 games; it is judgement, and a gather
+  point really set a moment before a villager came out now reads wrong.
 - **An age-up click is the last one before the landing.** Clicks without the
   food come first, and none comes after the one that started the research: in
   144 age-ups not one fell inside its research. Counting back from the landing
