@@ -452,8 +452,11 @@ class Opening:
         Its id alone is not enough, because a bound can be late by a minute
         and then the gap in front of it looks like villagers nobody commanded.
         Between two commanded villagers the Town Centre is assumed to have
-        kept training while queue clicks were outstanding and the next one
-        still had room, and never while it was researching an age or Loom."""
+        kept training while queue clicks were outstanding and the ones after
+        still had room, and never while it was researching an age or Loom.
+        Room is judged with the commanded ones as early as they could have
+        been: judged at their latest, one commanded villager in the middle of
+        a gap splits it into two halves too short for anyone else."""
         step = VILLAGER_SECONDS
 
         def clear(end: float) -> float:
@@ -480,6 +483,7 @@ class Opening:
         seen = sorted({i for e in self.events if e.kind in ("assign", "build")
                        for i in e.ids if i > self.r.last_starting_id})
         landings = [landing for _, landing in self.ages.values()]
+        floors: dict[int, float] = {}
         observed: list[tuple[float, int]] = []
         later = math.inf
         for i in reversed(seen):
@@ -488,28 +492,56 @@ class Opening:
                 # Never back across a landing: more villagers just after one
                 # than a Town Centre can train came with the age, as the
                 # Bengalis' two do at every one.
-                floor = max((t for t in landings if t <= bound), default=0.0)
-                bound = max(floor, clear(min(bound, later - SPACING * step)))
+                floors[i] = max((t for t in landings if t <= bound), default=0.0)
+                bound = max(floors[i], clear(min(bound, later - SPACING * step)))
             observed.append((bound, i))
             later = bound
         observed.reverse()
         queued = sorted(e.t for e in self.events if e.kind == "queue" and e.what == "Villager"
                         and set(e.ids) & self.log.tcs for _ in range(e.amount))
+        slack = (1 - SPACING) * step
+
+        def slot(last: float, n: int) -> float:
+            """The earliest the n-th villager came out: the Town Centre free
+            and the villager queued."""
+            return after(max(last, queued[n]) if n < len(queued) else last)
+
+        def room(nxt: float, k: int) -> bool:
+            """Whether the commanded villagers from the k-th on still come
+            out in time after one at `nxt`, up to the next age-up, which
+            empties the queue."""
+            prev = nxt
+            reset = min([second] + [start for start, _ in self.ages.values() if start >= nxt])
+            for j, (t, _) in enumerate(observed[k:]):
+                if j and t >= reset:
+                    break
+                prev = after(prev)
+                if prev > t + slack:
+                    return False
+            return True
 
         out: list[tuple[float, int | None]] = []
         last = 0.0
-        for t, i in observed + [(self.end, None)]:
-            while True:
-                nxt = after(last)
-                if (after(nxt) > t + (1 - SPACING) * step
-                        or sum(q <= nxt - step for q in queued) <= len(out)):
+        for k, (t, i) in enumerate(observed + [(self.end, None)]):
+            while len(out) < len(queued):
+                nxt = slot(last, len(out))
+                if nxt > self.end or not room(nxt, k):
                     break
                 out.append((nxt, None))
                 last = nxt
             if i is None:
                 break
+            last = max(last, t if t >= second else min(slot(last, len(out)), t))
             out.append((t, i))
-            last = max(last, t)
+
+        # Each commanded villager as late as the next one, seen or not, allows.
+        later = math.inf
+        for k in range(len(out) - 1, -1, -1):
+            t, i = out[k]
+            if t < second:
+                t = max(floors.get(i, 0.0), clear(min(t, later - SPACING * step)))
+            out[k] = (t, i)
+            later = t
         return [s for s in out if s[0] <= self.end]
 
     def rally_at(self, t: float, previous: float) -> Event | None:

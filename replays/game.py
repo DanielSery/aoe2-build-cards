@@ -234,7 +234,9 @@ class Replay:
 
     def nearest(self, x: float, y: float, jobs: set, within: float) -> str | None:
         best, best_d = None, within
-        for job in jobs:
+        # In a fixed order: a set of names is iterated in a different order
+        # every run, and a tie went to whichever came last.
+        for job in sorted(jobs):
             for sx, sy in self._sites[job]:
                 d = math.dist((x, y), (sx, sy))
                 if d <= best_d:

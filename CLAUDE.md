@@ -268,9 +268,9 @@ and `npm run preview` proxy `/api` to it.
   with it (Benanji queued 99 in one game; 39 ever appear in a command).
   `Opening.spawns` places every villager the replay names by its id, and fills
   in between only while queue clicks were outstanding, no age-up or Loom was
-  researching, and the next named villager still had room. So the villager
-  counts are an inference; buildings, techs, age landings, gather points and
-  right-clicks are read.
+  researching, and the named villagers after it, up to the next age-up, still
+  had room. So the villager counts are an inference; buildings, techs, age
+  landings, gather points and right-clicks are read.
 - **An id is a clock, but a slow one.** Ids are handed out in creation order
   across all players, so nothing is younger than the first command naming any
   larger id (`Replay.created_by`). That is a bound, and it can be late by a
@@ -282,6 +282,18 @@ and `npm run preview` proxy `/api` to it.
   Roman at 22 against at most 18. Two things stop the spacing: a second Town
   Centre, and an age landing, since more villagers right after one than a
   Town Centre can train came with the age (the Bengalis get two at each).
+- **Room for a villager nobody commanded is judged with the named ones as
+  early as they could have come out** — the Town Centre free and their click
+  in — at a villager's time each, and they are placed at their latest only
+  once the gaps are filled. Judged at their latest, as it was, one named
+  villager in the middle of a gap split it into two halves each too short for
+  anyone else: three Magyar games with fourteen villager clicks and Loom
+  filling the Town Centre to the second before Feudal each read one villager
+  short, and that one was the fourth on the wood, which nobody ever clicked.
+  Over 578 players of 80 games this changes the count at 153 of 1070 age-up
+  clicks: up by one at 109, by two at 30 and by three at 8, all Castle, and
+  down by one at 6, where the old count had fitted a villager in only by
+  spacing the named ones closer than a villager's time.
 - **A cancelled building is no building.** A replay never says a building was
   finished, and a DELETE names an id and nothing else. Ids are handed out in
   creation order, so a deleted id nobody ever commanded is pinned to the last
@@ -353,8 +365,8 @@ and `npm run preview` proxy `/api` to it.
   age-up; read once, the next game's Loom moved only to 5:51 and its fourth
   wood villager was still on the boar. It is an inference, not a bound:
   where the chain applies too, it stays at or under the chain for 80 of 85
-  techs. Over 156 games it moves 105 of the 530 techs the chain leaves at
-  their click, by a median of 23 seconds and at most 299. A tech with no
+  techs. Over 156 games it moves 116 of the 530 techs the chain leaves at
+  their click, by a median of 25 seconds and at most 299. A tech with no
   landed age-up after it is still dated off its click, and is early
   wherever villagers were queued ahead of it.
 - **mgz misreads `SPECIAL` and `UNGARRISON` unit ids** by a byte (an id times
