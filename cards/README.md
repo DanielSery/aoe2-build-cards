@@ -154,9 +154,10 @@ the source are all who arrived. Use *joined from* only for a move to where
 the new villagers go; a move anywhere else is *moved to*. The second column
 is counted before the first, whatever order they are drawn in.
 
-That figure is **counted up** by default. Type one into *Total on this
-work* and it says so outright, and everything below counts on from there.
-Turn the totals off for the whole card in the Card panel.
+That figure is **counted up** by default. Double-click it and type one, and
+it says so outright, and everything below counts on from there; clear it and
+it counts up again. Turn the totals off for the whole card with *Running
+totals*, above the shelf while nothing is selected.
 
 Cards saved before the number moved to *moved to* open with it there, and
 their *before* places folded into the place after the work.
@@ -165,7 +166,7 @@ their *before* places folded into the place after the work.
 
 The small figure over a tile — `50` over gold — is **out of the layout**. A
 row that has one is exactly as tall as a row that does not, and every tile on
-the card stays on the same line. Set it in the icon's panel on the right.
+the card stays on the same line. Double-click the icon to type it.
 
 ## Editing
 
@@ -176,20 +177,28 @@ the card stays on the same line. Set it in the icon's panel on the right.
   moves.
 - **Add a row** with the `+ row` strip at the foot of each phase, or press
   `Enter` — which adds one after whatever is selected. Either way the new row
-  is selected, so the next click or drag has somewhere to go.
-- Click anything on the card to select it. The panel on the right shows
-  **that entity and nothing else**; the crumbs at its top are how you get back
-  up to the row, the phase or the card.
-- Empty places appear while you drag something, so there is somewhere to drop
-  it, and when selected; otherwise the card shows only what it holds. The end
-  of a new, empty row shows too, so a click on the shelf lands somewhere you
-  can see.
+  is selected, so the next click or drag has somewhere to go. `Ctrl D`
+  duplicates the selected row, and `+ phase` at the foot of the card adds a
+  phase.
+- There is no panel of fields: **type on the card**. Double-click the title,
+  the subtitle, a phase's label, a number, the figure under it, a note or an
+  icon (for its caption) and type; `Enter` or clicking away keeps it, `Esc`
+  puts it back. `F2` does the same for whatever is selected, and with a
+  number selected, typing a digit starts a new one.
+- Click anything on the card to select it. Above the shelf, the app says what
+  is selected and what can be done to it: a phase's colour, `+ Row`,
+  *Duplicate*, a note in the row's extras, moving it and deleting it. With
+  nothing selected it offers a new phase and the running totals.
+- Selecting a row shows its empty places — where new villagers go, a move and
+  its source, the extras — so one can be clicked and the shelf aimed at it.
+  Empty places also appear while you drag something. A place, or anything in
+  it, selected offers `+ words` for words after its icons ("Research Loom").
 - **Drag** icons and numbers to reorder them inside a place, or to move them
   to another place or another row. A **blue caret** shows the
   gap it will land in — aim at the left or right half of whatever you are
   over. Drag a row by the grip on its left, including into another phase.
 - **Arrow keys** nudge the selection: `←` `→` move an item along its place,
-  `↑` `↓` move a row up and down its phase.
+  `↑` `↓` move a row up and down its phase, or a phase up and down the card.
 - **Del** removes whatever is selected — an icon, a number, a row, a phase.
 - **Zoom** with the buttons in the bar, `Ctrl` `+` / `-` / `0`, or `Ctrl` and
   the wheel. It is a view setting and never reaches the PNG.

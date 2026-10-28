@@ -1,5 +1,5 @@
 /**
- * State, undo, saving, and the three panes.
+ * State, undo, saving, and the two panes: the shelf and the card.
  *
  * The library is this browser's local storage and the only way a card leaves
  * the machine is the PNG, the PDF or the JSON. The one server the app ever
@@ -10,18 +10,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Card, Where } from "./model/card";
-import { addItem, addStep, count, dropItem, dropSection, dropStep, icon, moveItem,
-         moveStep, newCard, newStep, reborn, relocate, relocateStep } from "./model/card";
+import { addItem, addStep, count, dropItem, dropSection, dropStep, duplicateStep, findItem, icon, moveItem,
+         moveSection, moveStep, newCard, newStep, reborn, relocate, relocateStep } from "./model/card";
 import { download, fileName, load, read, save } from "./model/library";
 import { sampleCard } from "./model/samples";
-import { CardView } from "./render/CardView";
+import { CardView, typingFor } from "./render/CardView";
 import type { Edit } from "./render/CardView";
 import { cardsToPdf, SHEETS } from "./render/pdf";
 import type { SheetName } from "./render/pdf";
 import { cardToPng } from "./render/png";
 import { FromGame } from "./editor/FromGame";
 import { isReplay } from "./model/games";
-import { Inspector } from "./editor/Inspector";
+import { Actions } from "./editor/Actions";
 import { Library } from "./editor/Library";
 import { Palette } from "./editor/Palette";
 import { appendTarget, partName } from "./editor/target";
@@ -42,6 +42,8 @@ export function App() {
   const [cards, setCards] = useState<Card[]>(boot);
   const [currentId, setCurrentId] = useState<string>(() => cards[0]?.id ?? "");
   const [selected, setSelected] = useState<Where | null>(null);
+  const [typingKey, setTypingKey] = useState<string | null>(null);
+  const [seed, setSeed] = useState<string | null>(null);
   const [past, setPast] = useState<Card[]>([]);
   const [future, setFuture] = useState<Card[]>([]);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -110,6 +112,23 @@ export function App() {
   }, [selected, apply]);
 
 
+  const type = useCallback((key: string | null, first?: string) => {
+    setTypingKey(key);
+    setSeed(first ?? null);
+  }, []);
+
+  /** The arrow keys: an item along its place, a row or a phase up and down. */
+  const nudge = useCallback((by: -1 | 1) => {
+    if (!selected) return;
+    if (selected.item) apply((c) => moveItem(c, selected, by));
+    else if (selected.step) apply((c) => moveStep(c, selected, by));
+    else apply((c) => moveSection(c, selected.section, by));
+  }, [selected, apply]);
+
+  const duplicate = useCallback((at: Where) => {
+    if (at.step) apply((c) => duplicateStep(c, at));
+  }, [apply]);
+
   /** Add a row and select it, so the next click or drag has somewhere to go. */
   const addRow = useCallback((at: Where) => {
     const made = newStep();
@@ -147,15 +166,25 @@ export function App() {
         // After the row you are on, or at the end of the phase you are on.
         event.preventDefault();
         addRow({ section: selected.section, step: selected.step });
+      } else if (event.key === "F2") {
+        event.preventDefault();
+        type(typingFor(card, selected));
+      } else if (chord && event.key.toLowerCase() === "d" && selected?.step) {
+        event.preventDefault();
+        duplicate(selected);
+      } else if (selected?.item && !chord && /^[0-9]$|^a$/i.test(event.key)
+                 && findItem(card, selected)?.kind === "count") {
+        // A number selected and a key typed is a new number, as in a sheet.
+        event.preventDefault();
+        type(typingFor(card, selected), event.key);
       } else if (selected && event.key.startsWith("Arrow")) {
-        // The same nudge the inspector's arrows do, on the keys that look like
-        // them: an item along its place, a row up and down its phase.
+        // An item along its place, a row or a phase up and down: the keys
+        // that look like the way it goes.
         const by = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
         const sideways = event.key === "ArrowLeft" || event.key === "ArrowRight";
-        if (selected.item && sideways) { event.preventDefault(); apply((c) => moveItem(c, selected, by)); }
-        else if (selected.step && !selected.item && !sideways) {
+        if (Boolean(selected.item) === sideways) {
           event.preventDefault();
-          apply((c) => moveStep(c, selected, by));
+          nudge(by);
         }
       } else if (chord && (event.key === "0" || event.key === "+" || event.key === "-")) {
         event.preventDefault();
@@ -164,7 +193,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, remove, selected, apply, addRow, exportPdf]);
+  }, [undo, redo, remove, selected, apply, addRow, exportPdf, type, card, duplicate, nudge]);
 
   // Empty places are drawn only while something is being dragged. Listened for
   // in the capture phase, because every drop target stops the drop there. A
@@ -277,6 +306,10 @@ export function App() {
     addIcon: (where, key) => apply((c) => addItem(c, where, icon(key))),
     addNumber: (where, value) => apply((c) => addItem(c, where, count(value))),
     addRow,
+    change: apply,
+    typing: typingKey,
+    seed,
+    type,
   };
 
   const exportPng = async () => {
@@ -372,6 +405,9 @@ export function App() {
 
       <div className="body">
         <div className="pane palette">
+          <Actions card={card} selected={selected} apply={apply} addRow={addRow} duplicate={duplicate}
+                   nudge={nudge} remove={remove} typeSelection={() => type(typingFor(card, selected))}
+                   type={type} />
           <Palette onPick={pickIcon} onNumber={pickNumber}
                    target={partName(target?.part)} />
         </div>
@@ -385,10 +421,6 @@ export function App() {
           <div className="canvas-inner" style={{ zoom }}>
             <CardView card={card} edit={edit} />
           </div>
-        </div>
-        <div className="pane inspector">
-          <Inspector card={card} selected={selected} apply={apply} select={setSelected}
-                     addRow={addRow} />
         </div>
       </div>
 

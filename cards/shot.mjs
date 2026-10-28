@@ -87,8 +87,9 @@ await page.fill(".palette input[type=search]", "boar");
 await page.click(".palette .icon-btn >> nth=0");
 const oneMore = row(7).locator(".slot--to .countbox i");
 const huntThen = await oneMore.textContent();
-await row(5).locator(".slot--moveTo .countbox").click();
-await page.locator(".inspector label:has-text('Number') + input").fill("7");
+await row(5).locator(".slot--moveTo .countbox b").dblclick();
+await page.locator(".card--edit input.typing").fill("7");
+await page.keyboard.press("Enter");
 const huntNow = await oneMore.textContent();
 for (let i = 0; i < 4; i++) await page.click(".topbar button:has-text('Undo')");
 await page.fill(".palette input[type=search]", "");
@@ -106,8 +107,9 @@ await page.fill(".palette input[type=search]", "sheep");
 await page.click(".palette .icon-btn >> nth=0");
 const sheep = row(3).locator(".slot--to .countbox i");
 const sheepThen = await sheep.textContent();
-await row(2).locator(".slot--toFrom .countbox").click();
-await page.locator(".inspector label:has-text('Number') + input").fill("4");
+await row(2).locator(".slot--toFrom .countbox b").dblclick();
+await page.locator(".card--edit input.typing").fill("4");
+await page.keyboard.press("Enter");
 const [sheepNow, huntStill] = [await sheep.textContent(), await row(2).locator(".slot--to .countbox i").textContent()];
 for (let i = 0; i < 4; i++) await page.click(".topbar button:has-text('Undo')");
 await page.fill(".palette input[type=search]", "");
@@ -150,8 +152,9 @@ const heightOf = (n) => row(n).evaluate((e) => Math.round(e.getBoundingClientRec
 const cardHeight = () => page.locator(".canvas .card").evaluate(
   (e) => Math.round(e.getBoundingClientRect().height));
 const [wasRow, wasCard] = [await heightOf(5), await cardHeight()];
-await iconsIn(5, "moveTo").first().click();
-await page.fill('.inspector input[placeholder="e.g. 50"]', "140");
+await iconsIn(5, "moveTo").first().dblclick();
+await page.locator(".card--edit input.typing").fill("140");
+await page.keyboard.press("Enter");
 const [nowRow, nowCard] = [await heightOf(5), await cardHeight()];
 check(nowRow === wasRow && nowCard === wasCard,
   "a caption changes no measurement on the card",
@@ -184,11 +187,10 @@ await page.click(".topbar button:has-text('Undo')");
 // --- Del removes whatever is selected -------------------------------------
 
 await iconsIn(3, "from").first().click();
-const panel = await page.textContent(".inspector");
-check(panel.includes("Caption above the tile"),
-  "selecting an icon opens its fields", "icon fields did not open");
-check(!panel.includes("Number the rows"),
-  "the inspector shows one entity at a time", "the phase panel was showing too");
+const heading = await page.textContent(".actions h2");
+check(heading === "Icon" && await page.locator(".pane.inspector").count() === 0,
+  "there is no right panel, and the shelf says what is selected",
+  `the shelf said ${heading} with ${await page.locator(".pane.inspector").count()} right panels`);
 
 await page.keyboard.press("Delete");
 check(await iconsIn(3, "from").count() === 0, "Del removes the selected item", "Del did nothing");
@@ -205,7 +207,7 @@ check(await rows.count() === 9, "undo brings the row back", `left with ${await r
 const darkAge = page.locator(".canvas .card .phase").first();
 const before9 = await rows.count();
 await darkAge.locator(".add-row").click();
-const selectedCrumb = await page.textContent(".inspector .crumb.on");
+const selectedCrumb = await page.textContent(".actions h2");
 await page.keyboard.press("Enter");
 const after = await rows.count();
 await page.click(".topbar button:has-text('Undo')");
@@ -301,6 +303,26 @@ check(landed === grew + 1 && emptied === 0, "an item drags to another row",
   `row 3 went ${grew} → ${landed}, row 1 left with ${emptied}`);
 await page.click(".topbar button:has-text('Undo')");
 
+// --- typed on the card ----------------------------------------------------
+
+// With no right panel, the title, a phase's colour and a new phase are all
+// reached from the card and the shelf.
+await page.locator(".canvas .card-head h1").dblclick();
+await page.locator(".card--edit input.typing").fill("Renamed");
+await page.keyboard.press("Enter");
+const renamed = await page.textContent(".canvas .card-head h1");
+await page.locator(".canvas .card .phase-label").first().click();
+await page.click(".actions .tone.phase--castle");
+const recoloured = await page.locator(".canvas .card .phase").first().getAttribute("class");
+const phases = await page.locator(".canvas .card .phase").count();
+await page.click(".canvas .card .add-phase");
+const added = await page.locator(".canvas .card .phase").count();
+for (let i = 0; i < 3; i++) await page.click(".topbar button:has-text('Undo')");
+check(renamed === "Renamed" && recoloured.includes("phase--castle") && added === phases + 1
+  && await page.textContent(".canvas .card-head h1") === "MAA + Tower",
+  "the title is typed on the card, and a phase's colour and a new phase come from the shelf and the card",
+  `title ${renamed}, phase ${recoloured}, phases ${phases} → ${added}`);
+
 // --- a replay dropped on the page -----------------------------------------
 
 // Anywhere on the page, not only on the dialog: it opens Analyze game and
@@ -395,7 +417,8 @@ const exportBox = () => page.locator(".export-copy .card").evaluate((node) => {
   const rect = node.getBoundingClientRect();
   return { w: Math.round(rect.width), h: Math.round(rect.height) };
 });
-for (let i = 0; i < 4; i++) await page.click(".inspector button:has-text('Duplicate')");
+for (let i = 0; i < 2; i++) await page.click(".actions button:has-text('Duplicate')");
+for (let i = 0; i < 2; i++) await page.keyboard.press("Control+D");
 const long = await exportBox();
 const longRows = await page.locator(".export-copy .card").evaluate((card) => {
   const box = card.getBoundingClientRect();

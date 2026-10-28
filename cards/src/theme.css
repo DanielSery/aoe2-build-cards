@@ -55,10 +55,9 @@ button.tiny { padding: 2px 7px; font-size: 12px; }
 .topbar .spacer { flex: 1; }
 .topbar input[type="text"] { min-width: 220px; }
 
-.body { display: grid; grid-template-columns: 296px 1fr 336px; min-height: 0; }
+.body { display: grid; grid-template-columns: 296px 1fr; min-height: 0; }
 .pane { min-height: 0; overflow: auto; padding: 12px; }
 .pane.palette { border-right: 1px solid var(--line); }
-.pane.inspector { border-left: 1px solid var(--line); }
 .pane.canvas { background: var(--chrome-2); display: block; padding: 24px; }
 .canvas-inner { width: max-content; margin: 0 auto; }
 .export-copy { position: fixed; top: 0; left: -20000px; pointer-events: none; }
@@ -67,13 +66,11 @@ h2.section { font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
              color: var(--ink-dim); margin: 16px 0 8px; }
 h2.section:first-child { margin-top: 0; }
 
-.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
-          margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
-.crumbs .sep { color: var(--ink-dim); margin: 0 2px; }
-.crumb { background: none; border: 0; padding: 2px 4px; font-size: 12px;
-         color: var(--ink-dim); border-radius: 4px; }
-.crumb:hover { color: var(--ink); }
-.crumb.on { color: var(--ink); font-weight: 700; }
+.actions { margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.actions .hint { margin: 8px 0 0; }
+.tones { display: flex; gap: 4px; margin-right: 4px; }
+.tone { width: 24px; height: 24px; padding: 0; border: 2px solid var(--line); border-radius: 50%; }
+.tone.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 
 .menu-anchor { position: relative; }
 .menu-backdrop { position: fixed; inset: 0; z-index: 20; }
@@ -115,14 +112,7 @@ input.wide, select.wide, textarea.wide { width: 100%; }
 .icon-btn { padding: 0; aspect-ratio: 1; background: #000; border: 2px solid var(--line);
             border-radius: 5px; overflow: hidden; }
 .icon-btn img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.icon-btn.small { width: 38px; height: 38px; flex: none; }
 .icon-btn.on { border-color: var(--accent); }
-.icon-btn .glyph { display: grid; place-items: center; width: 100%; height: 100%;
-                   font-size: 17px; color: var(--ink); background: var(--chrome-3); }
-
-.slot-block { margin-top: 8px; padding: 8px 9px; border: 1px solid var(--line);
-              border-radius: 8px; background: var(--chrome-3); cursor: pointer; }
-.slot-block.on { border-color: var(--accent); background: rgba(91, 141, 239, 0.1); }
 .slot-block strong { font-size: 13px; }
 
 .cards-list { display: flex; flex-direction: column; gap: 4px; }
@@ -275,6 +265,19 @@ input.wide, select.wide, textarea.wide { width: 100%; }
   color: rgba(0, 0, 0, 0.45); border: 2px dashed rgba(0, 0, 0, 0.24); border-radius: 7px;
 }
 .card--edit .link .arrow { opacity: 0.45; }
+/* Typing on the card: the text's own size and weight, on a field that shows
+ * it is one. */
+.card--edit input.typing { font: inherit; color: inherit; background: #fff; padding: 0 4px;
+                           border: 2px solid #1f6feb; border-radius: 5px; line-height: 1.1;
+                           min-width: 2ch; max-width: 100%; }
+.card--edit .cap--typing { pointer-events: auto; z-index: 3; }
+.card--edit .cap--typing input.typing { font-size: 17px; width: auto; }
+.card--edit .countbox input.typing { width: 3.2ch; text-align: center; padding: 0; }
+.card--edit .no-subtitle { color: rgba(0, 0, 0, 0.28); font-size: 20px; font-weight: 700; }
+.card--edit .add-words { margin-left: 4px; padding: 4px 8px; font-size: 13px; font-weight: 700;
+                         background: rgba(255, 255, 255, 0.5); color: rgba(0, 0, 0, 0.55);
+                         border: 2px dashed rgba(0, 0, 0, 0.28); border-radius: 6px; }
+.add-phase { margin-top: 12px; }
 .card--edit .is-selected { outline: 3px solid #1f6feb; outline-offset: 2px; border-radius: 7px; }
 .card--edit .is-over { outline: 3px dashed #1f6feb; outline-offset: 3px; border-radius: 7px; }
 

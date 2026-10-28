@@ -26,8 +26,8 @@ works.
 | `src/render/CardView.tsx` | the card. Editing is class names and handlers passed in, so the same component is what exports |
 | `src/render/png.ts` | the card as an image |
 | `src/render/pdf.ts` | ticked cards as one PDF: the layouts, where a card may be cut, and the file itself |
-| `src/editor/` | the shelf, the row form, the library panel, *Analyze game…* and its finder, and where an added icon lands |
-| `src/App.tsx` | state, undo, the three panes, the off-screen export copy |
+| `src/editor/` | the shelf, what can be done to the selection above it (`Actions`), the library panel, *Analyze game…* and its finder, and where an added icon lands |
+| `src/App.tsx` | state, undo, the two panes, the keys, the off-screen export copy |
 
 **A row is three columns, not a canvas.** First where the **new** villagers
 go (`to`), and any moved off other work to the *same* place with them, whose
@@ -67,9 +67,24 @@ grid, because the rows sit in separate phase boxes.
 the villagers at work, and took 66px off every row of a 1040px card for a
 figure the numbers on the row already carry.
 
+**There is no panel of fields: words and numbers are typed on the card.**
+The title, subtitle, a phase's label, a place's words, a number, the figure
+under it, a note and an icon's caption each open in place on a double-click
+(`CardView.Typed`), and so does the selection on `F2` or — for a number — a
+digit typed. One name for each piece of text, `typing(field, id)`, is what
+lets a double-click on the card and a key in `App` open the same one. `Typed`
+keeps a change once: `Enter` closes it, and closing a focused field would
+blur it a second time. App's keys ignore a focused field, so `Enter` there
+keeps the text instead of adding a row. What has nothing on the card to
+click — a phase's colour, a copy of a row, the running totals — sits above
+the shelf (`editor/Actions.tsx`), with buttons for what the keys do. The
+right-hand panel of fields came out whole, as asked; the export copy has no
+`edit`, so it never draws a field.
+
 **An empty place is drawn only while something is being dragged** — or when
-it is the selection, or the end of a selected row that holds nothing, so a
-click on the shelf has somewhere visible to land. `App` tracks the drag in the
+it or its row is the selection, so it can be clicked and the shelf aimed at
+it: with no panel to add a move or a source, selecting the row is how they
+are reached. `App` tracks the drag in the
 capture phase, since every drop target stops propagation, and ends it a turn
 *after* a drop: ended at once, React re-renders before the drop reaches the
 empty place's own handler, the place is gone, and the drop lands nowhere.
