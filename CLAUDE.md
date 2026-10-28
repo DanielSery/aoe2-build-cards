@@ -310,6 +310,19 @@ and `npm run preview` proxy `/api` to it.
   unit given soldiers' commands (formation, patrol, attack-move…) that never
   did a villager's work all game; villagers selected with soldiers get those
   commands too, which is why it is the work that decides.
+- **The shore fish is a work of its own, and a fishing ship is no
+  villager.** The planner's catalogue is the land's food, so the shore fish
+  (`game.SHORE_FISH`) had no job: a villager sent to it stayed on the card at
+  whatever they did before, and a Nomad start's fisher was drawn on the wood.
+  It is "fish" now, with the fish's icon and figure. A ship sent to the shore
+  fish reads exactly like a villager, and one putting up a fish trap was
+  counted as a villager all along, so `PlayerLog.sailors` leaves out a unit
+  that fished — shore or deep (`game.FISH`) — or put up a fish trap, and never
+  did a villager's work on land. One that only ever fished is taken for a
+  ship. Over 578 players of 80 games that changes the count at 54 of 1070
+  age-up clicks, 52 of them down, by up to 26 on a water map, and halves the
+  clicks above what one Town Centre could have trained, 41 to 21; 35 cards
+  now name the shore fish.
 - **A gather point moved just before a villager came out was moved for
   it** (`Opening.rally_at`, `REACTED`). A villager the replay never sends
   anywhere walked to the gather point in force when it came out, and that

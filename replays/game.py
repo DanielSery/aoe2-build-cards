@@ -40,6 +40,12 @@ NEW_GAIA = {
 NEW_BUILDINGS = {2556: "Settlement", 1889: "Pasture"}
 
 BOAR_TYPES = {48, 810, 822, 936, 1139, 1301, 2589}
+# The planner's catalogue is the land's food, so the water's is named here. Of
+# it only the shore fish can be reached from land, so only it is a villager's
+# work: perch, marlin, salmon, tuna, snapper, dorado and box turtles are for
+# fishing ships.
+SHORE_FISH = 69
+FISH = {SHORE_FISH, 53, 450, 455, 456, 457, 458, 1141}
 DROPSITES = {"Lumber Camp": "wood", "Mill": "mill", "Mining Camp": "mine", "Farm": "farm",
              "Pasture": "pasture", "Folwark": "mill", "Mule Cart": "mine", "Settlement": "any"}
 FIELDS = {"Farm", "Pasture"}  # the work itself rather than somewhere to take it
@@ -62,6 +68,8 @@ FORWARD = 0.75         # and how much nearer to it than to any of the team's own
 
 
 def job_of_type(type_id: int) -> str | None:
+    if type_id == SHORE_FISH:
+        return "fish"
     if type_id in NEW_GAIA:
         return NEW_GAIA[type_id][1]
     entry = CATALOGUE.get(str(type_id))
@@ -260,6 +268,7 @@ class PlayerLog:
                        for a in self.actions if self.built(a)]
         self.unresolved: Counter = Counter()
         self.soldiers = self._soldiers()
+        self.sailors = self._sailors()
 
     def _cancelled(self) -> set[int]:
         """The BUILD commands whose foundation was deleted before one villager
@@ -313,6 +322,28 @@ class PlayerLog:
                 if node is not None and job_of_type(node.type) in ("wood", "gold", "stone"):
                     worked.update(ids)
         return {i for i in drilled - worked if isinstance(i, int) and i > self.r.last_starting_id}
+
+    def _sailors(self) -> set[int]:
+        """New units that fished or put up a fish trap and never did a
+        villager's work on land: fishing ships. A ship sent to the shore fish
+        reads exactly like a villager sent there, so it is the rest of their
+        work that decides, and a unit that only ever fished is taken for a
+        ship."""
+        fished, landed = set(), set()
+        for a in self.actions:
+            ids = a.payload.get("object_ids") or []
+            kind = a.type.name
+            if kind == "BUILD" and building_name(a.payload) == "Fish Trap":
+                fished.update(ids)
+            elif kind in BUILDING:
+                landed.update(ids)
+            elif kind == "ORDER":
+                node = self.r.nodes.get(a.payload.get("target_id"))
+                if node is not None and node.type in FISH:
+                    fished.update(ids)
+                elif node is not None and job_of_type(node.type):
+                    landed.update(ids)
+        return {i for i in fished - landed if isinstance(i, int) and i > self.r.last_starting_id}
 
     def building_at(self, x: float, y: float, t: float) -> Placed | None:
         best, best_d = None, math.inf
@@ -368,7 +399,7 @@ class PlayerLog:
 
     def villagers(self, ids) -> list[int]:
         return [i for i in ids if i in self.start_villagers
-                or i > self.r.last_starting_id and i not in self.soldiers]
+                or i > self.r.last_starting_id and i not in self.soldiers and i not in self.sailors]
 
     def spot(self, a) -> tuple[float, float] | None:
         """Where a command sends its units: the click, or what was clicked."""

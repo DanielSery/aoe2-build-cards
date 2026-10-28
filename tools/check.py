@@ -398,7 +398,7 @@ def check_villagers_let_out_go_to_the_gather_point(fail) -> None:
 
     log = object.__new__(PlayerLog)
     log.r = Stub(nodes={}, last_starting_id=100, commanded={201, 202, 203, 204})
-    log.tcs, log.start_villagers, log.soldiers, log.cancelled = {50}, set(), set(), set()
+    log.tcs, log.start_villagers, log.soldiers, log.sailors, log.cancelled = {50}, set(), set(), set(), set()
     log.forward = lambda x, y: False
     log.actions = [command(10.0, "SPECIAL", [201 << 8, 202 << 8, 203 << 8, 204 << 8, 205 << 8], target_id=50),
                    command(11.0, "MOVE", [204]),
@@ -480,6 +480,36 @@ def check_a_building_goes_with_its_builders(fail) -> None:
     if [i.get("icon") for i in going["extras"]] != [building_icon("House")] or len(going["moveTo"]["items"]) != 2:
         fail(f"a house with no row of its builders' was {going}, wanted it only mentioned")
 
+def check_shore_fish_is_its_own_work(fail) -> None:
+    """A villager on the shore fish is on the fish, a work of its own. A unit
+    that only ever fished, or put up a fish trap, is a fishing ship and no
+    villager at all."""
+    from datetime import timedelta
+    from types import SimpleNamespace as Stub
+    from replays.game import SHORE_FISH, Node, PlayerLog, job_of_type
+
+    def command(t, kind, ids, **rest):
+        return Stub(timestamp=timedelta(seconds=t), type=Stub(name=kind), position=None,
+                    payload={"object_ids": ids, **rest})
+
+    log = object.__new__(PlayerLog)
+    log.r = Stub(last_starting_id=100, nodes={7: Node(7, SHORE_FISH, "Shore Fish", 0, 0, 0),
+                                              8: Node(8, 53, "Fish (Perch)", 0, 0, 0),
+                                              9: Node(9, 1248, "Tree (Oak Autumn)", 0, 0, 0)})
+    log.start_villagers, log.soldiers = [1], set()
+    log.actions = [command(10.0, "ORDER", [1, 201], target_id=7),
+                   command(10.0, "ORDER", [202], target_id=8),
+                   command(10.0, "BUILD", [203], building="Fish Trap"),
+                   command(10.0, "ORDER", [204], target_id=7),
+                   command(40.0, "ORDER", [204], target_id=9)]
+    log.sailors = log._sailors()
+    if job_of_type(SHORE_FISH) != "fish":
+        fail(f"the shore fish read as {job_of_type(SHORE_FISH)}, wanted fish")
+    if log.villagers([1, 201, 202, 203, 204]) != [1, 204]:
+        fail(f"the villagers were {log.villagers([1, 201, 202, 203, 204])}, wanted the one who started "
+             "a villager and the one who also cut wood")
+
+
 
 
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
@@ -495,7 +525,8 @@ CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_villagers_let_out_go_to_the_gather_point,
           check_neighbouring_rows_name_a_work_once,
           check_sheep_between_hunts_are_no_move,
-          check_a_building_goes_with_its_builders)
+          check_a_building_goes_with_its_builders,
+          check_shore_fish_is_its_own_work)
 
 
 def main() -> int:

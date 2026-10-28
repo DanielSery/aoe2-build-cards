@@ -1,7 +1,7 @@
 """
 mgz 1.8.51, made fit to read a 2026 replay.
 
-Three things stand between it and one, and all three are fixed here rather than
+Four things stand between it and one, and all four are fixed here rather than
 by installing an unmerged fork:
 
 - Save 67.2 added a string to every player record and two words ahead of the
@@ -11,7 +11,8 @@ by installing an unmerged fork:
   type alone, so one player's command inherits another player's units -- 2179
   of 3162 moves in one 4v4. It is switched off; `game.py` resolves selections
   per player.
-- A civilisation newer than aocref's dataset is a KeyError.
+- A civilisation newer than aocref's dataset is a KeyError, and a built-in map
+  newer than it (Arabian Desert, 216) a ValueError.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ import inspect
 from collections import defaultdict
 from pathlib import Path
 
+import mgz.common.map as maps
 import mgz.fast.header as header
 import mgz.model as model
 
@@ -55,6 +57,16 @@ def _any_civilisation(*args):
     return dataset_id, dataset
 
 
+_lookup_map = maps.lookup_name
+
+
+def _any_map(map_id, name, version, reference):
+    try:
+        return _lookup_map(map_id, name, version, reference)
+    except ValueError:
+        return name, False
+
+
 _consts = model.get_consts
 
 
@@ -73,6 +85,7 @@ def _any_lobby_setting():
 _read_save_67_2()
 model.get_dataset = _any_civilisation
 model.get_consts = _any_lobby_setting
+maps.lookup_name = _any_map
 model.Inputs.add_action = lambda self, action: None
 
 
