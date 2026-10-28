@@ -21,7 +21,7 @@ from functools import cached_property
 from pathlib import Path
 
 from .game import (AGE_TECHS, CASTLES, DATA, DROPSITES, FIELDS, PRODUCTION, TOWERS, UNIT_LINES, Event,
-                   PlayerLog, Replay)
+                   PlayerLog, Replay, town_centre_speed)
 
 ICON_DIR = Path(__file__).resolve().parents[1] / "cards" / "public" / "icons" / "aoe2"
 ICON_KEYS = {p.stem for p in ICON_DIR.glob("*.png")}
@@ -47,7 +47,7 @@ PHASES = [("Dark Age", "dark"), ("Going Feudal", "transition"), ("Feudal Age", "
 
 VILLAGER_SECONDS = 25.0
 VILLAGER_SPEED = DATA.unit_by_id(83)["speed"]  # tiles a second
-SPACING = 0.9       # of a villager's time: slack for a faster Town Centre, as Persian age-ups run 5-9% under the nominal time
+SPACING = 0.9       # of a villager's time: slack in spacing the named villagers, whose estimates run late
 REACTED = 5.0       # a gather point moved this soon before a villager's estimated spawn was moved for it
 BRIEF = 30.0        # a task replaced this soon, or before the villager got there, is not on the card
 ERRAND = 15.0       # but one to gold, stone or a building site is from this soon: "50 stone", a camp for others
@@ -281,6 +281,7 @@ class Opening:
         self.log = PlayerLog(replay, number, enemies)
         self.events = self.log.events()
         self.ages, self.clicked = self._ages()
+        self.speed = town_centre_speed(self.log.player.civilization)
         if "castle" in self.ages:
             self.end = self.ages["castle"][1] + CASTLE_TAIL
         else:
@@ -308,6 +309,15 @@ class Opening:
             clicked[age] = clicks[-1] if clicks else landing - AGE_SECONDS[age]
             out[age] = (max(clicked[age], landing - AGE_SECONDS[age]), landing)
         return out, clicked
+
+    def villager_seconds(self, t: float) -> float:
+        """A villager's time at a Town Centre training at `t`, in the age it had
+        by then."""
+        age = "dark"
+        for later in ("feudal", "castle", "imperial"):
+            if later in self.ages and t >= self.ages[later][1]:
+                age = later
+        return VILLAGER_SECONDS / self.speed[age]
 
     def section_of(self, t: float) -> str:
         name = "Dark Age"
@@ -409,7 +419,7 @@ class Opening:
                 continue
             if e.kind == "queue" and e.what == "Villager":
                 for _ in range(e.amount):
-                    free = max(free, e.t) + e.takes
+                    free = max(free, e.t) + self.villager_seconds(max(free, e.t))
                     if e.t < research.t:
                         ends.append(free)
                     else:
@@ -457,7 +467,7 @@ class Opening:
         Room is judged with the commanded ones as early as they could have
         been: judged at their latest, one commanded villager in the middle of
         a gap splits it into two halves too short for anyone else."""
-        step = VILLAGER_SECONDS
+        step = self.villager_seconds
 
         def clear(end: float) -> float:
             """The latest training ending by `end` that misses every research."""
@@ -465,15 +475,15 @@ class Opening:
             while moved:
                 moved = False
                 for a, b in busy:
-                    if end - step < b and end > a:
+                    if end - step(end) < b and end > a:
                         end, moved = a, True
             return end
 
         def after(last: float) -> float:
-            nxt = last + step
+            nxt = last + step(last)
             for a, b in busy:
-                if a - 1 <= nxt - step < b or a < nxt <= b:
-                    nxt = max(nxt, b + step)
+                if a - 1 <= nxt - step(last) < b or a < nxt <= b:
+                    nxt = max(nxt, b + step(b))
             return nxt
 
         # From the second Town Centre on, two can train at once, so spacing
@@ -493,13 +503,13 @@ class Opening:
                 # than a Town Centre can train came with the age, as the
                 # Bengalis' two do at every one.
                 floors[i] = max((t for t in landings if t <= bound), default=0.0)
-                bound = max(floors[i], clear(min(bound, later - SPACING * step)))
+                bound = max(floors[i], clear(min(bound, later - SPACING * step(later))))
             observed.append((bound, i))
             later = bound
         observed.reverse()
         queued = sorted(e.t for e in self.events if e.kind == "queue" and e.what == "Villager"
                         and set(e.ids) & self.log.tcs for _ in range(e.amount))
-        slack = (1 - SPACING) * step
+        slack = (1 - SPACING) * VILLAGER_SECONDS
 
         def slot(last: float, n: int) -> float:
             """The earliest the n-th villager came out: the Town Centre free
@@ -539,7 +549,7 @@ class Opening:
         for k in range(len(out) - 1, -1, -1):
             t, i = out[k]
             if t < second:
-                t = max(floors.get(i, 0.0), clear(min(t, later - SPACING * step)))
+                t = max(floors.get(i, 0.0), clear(min(t, later - SPACING * step(later))))
             out[k] = (t, i)
             later = t
         return [s for s in out if s[0] <= self.end]

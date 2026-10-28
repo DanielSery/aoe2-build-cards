@@ -256,12 +256,12 @@ def check_loom_waits_for_the_villagers_ahead(fail) -> None:
     waited for its turn, or the Town Centre may have stood idle before it."""
     from types import SimpleNamespace as Stub
     from replays.card import Opening
-    from replays.game import Event
+    from replays.game import Event, town_centre_speed
 
     def done(between):
         opening = object.__new__(Opening)
         opening.ages, opening.clicked = {"feudal": (375.0, 505.0)}, {"feudal": 370.0}
-        opening.log = Stub(tcs={100})
+        opening.log, opening.speed = Stub(tcs={100}), town_centre_speed(None)
         loom = Event(280.0, "research", [100], what="Loom", takes=25.0)
         opening.events = sorted([loom, Event(370.0, "research", [100], what="Feudal Age", takes=130.0)]
                                 + [Event(t, "queue", [100], what="Villager", takes=25.0) for t in between],
@@ -279,7 +279,7 @@ def check_loom_waits_for_the_villagers_ahead(fail) -> None:
     def ahead(trained):
         opening = object.__new__(Opening)
         opening.ages, opening.clicked = {"feudal": (375.0, 505.0)}, {"feudal": 375.0}
-        opening.log = Stub(tcs={100})
+        opening.log, opening.speed = Stub(tcs={100}), town_centre_speed(None)
         loom = Event(210.0, "research", [100], what="Loom", takes=25.0)
         opening.events = sorted([loom, Event(375.0, "research", [100], what="Feudal Age", takes=130.0)]
                                 + [Event(200.0, "queue", [100], what="Villager", takes=25.0) for _ in range(4)],
@@ -509,6 +509,19 @@ def check_shore_fish_is_its_own_work(fail) -> None:
         fail(f"the villagers were {log.villagers([1, 201, 202, 203, 204])}, wanted the one who started "
              "a villager and the one who also cut wood")
 
+def check_a_persian_town_centre_trains_faster(fail) -> None:
+    """The Persians' Town Centre works faster with every age, so their
+    villagers come out closer together; nobody else's Town Centre does."""
+    from replays.game import town_centre_speed
+
+    persian, magyar = town_centre_speed("Persians"), town_centre_speed("Magyars")
+    ages = ("dark", "feudal", "castle", "imperial")
+    if not (1 < persian["dark"] < persian["feudal"] < persian["castle"] < persian["imperial"]):
+        fail(f"the Persian Town Centre's speed was {persian}, wanted faster and faster from the Dark Age")
+    if any(magyar[age] != 1 for age in ages):
+        fail(f"the Magyar Town Centre's speed was {magyar}, wanted the game data's own")
+
+
 
 
 
@@ -526,7 +539,8 @@ CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_neighbouring_rows_name_a_work_once,
           check_sheep_between_hunts_are_no_move,
           check_a_building_goes_with_its_builders,
-          check_shore_fish_is_its_own_work)
+          check_shore_fish_is_its_own_work,
+          check_a_persian_town_centre_trains_faster)
 
 
 def main() -> int:

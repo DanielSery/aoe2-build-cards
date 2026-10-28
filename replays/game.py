@@ -80,6 +80,18 @@ def job_of_type(type_id: int) -> str | None:
     return entry["job"]
 
 
+def town_centre_speed(civ: str | None) -> dict[str, float]:
+    """How much faster than the game data a civ's Town Centre works in each
+    age. Its unit changes with the age, and a bonus names the unit."""
+    speed = dict.fromkeys(("dark", "feudal", "castle", "imperial"), 1.0)
+    mods = DATA.raw_civ(civ)["eco_modifiers"] if civ in DATA.civ_names else []
+    for age, unit in zip(speed, ("RTWC", "RTWC2", "RTWC3", "RTWC4")):
+        for m in mods:
+            if m["kind"] == "work_rate" and m.get("target_unit") == unit and m["mode"] == "multiply":
+                speed[age] *= m["d"]
+    return speed
+
+
 def research_seconds(payload: dict) -> float:
     """How long a research click's tech takes, off the game data: the click
     is when it was asked for, and a card wants when it was done."""

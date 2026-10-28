@@ -282,6 +282,14 @@ and `npm run preview` proxy `/api` to it.
   Roman at 22 against at most 18. Two things stop the spacing: a second Town
   Centre, and an age landing, since more villagers right after one than a
   Town Centre can train came with the age (the Bengalis get two at each).
+  A villager's time is the civ's own (`Opening.villager_seconds`): the
+  Persians' Town Centre works 5, 10, 15 and 20% faster in the four ages,
+  the one Town Centre bonus in the game data (`game.town_centre_speed`;
+  VER 8.9, so a newer patch's numbers are not read). That moves 15 Persian
+  cards of 578. The named villagers are still spaced at `SPACING`, 0.9 of a
+  villager's time, which had been slack for the Persians: spaced at the full
+  time instead, 435 of 578 cards changed and two Magyar games whose Town
+  Centre never stopped read wood villagers onto the sheep and the boar.
 - **Room for a villager nobody commanded is judged with the named ones as
   early as they could have come out** — the Town Centre free and their click
   in — at a villager's time each, and they are placed at their latest only
