@@ -347,12 +347,16 @@ and `npm run preview` proxy `/api` to it.
   seconds before Feudal at 6:18, was done at 6:15; dated off its click it was
   done at 5:01, and the 25 seconds it took from the queue in the wrong place
   put a villager who went to the wood on the boar. "Trained" is the card's
-  own count (`spawns`, read once with Loom dated the old way), so this is an
-  inference, not a bound: where the chain applies too, it stays at or under
-  the chain for 80 of 85 techs. Over 156 games it moves 113 of the 530
-  techs the chain leaves at their click, by a median of 23 seconds and four
-  of them by over 90. A tech with no landed age-up after it is still dated
-  off its click, and is early wherever villagers were queued ahead of it.
+  own count (`spawns`), and where Loom sits changes it: the 25 seconds it
+  takes are 25 seconds no villager came out in. So `spawns` reads the two in
+  turn until Loom stops moving, which it does only later and never past the
+  age-up; read once, the next game's Loom moved only to 5:51 and its fourth
+  wood villager was still on the boar. It is an inference, not a bound:
+  where the chain applies too, it stays at or under the chain for 80 of 85
+  techs. Over 156 games it moves 105 of the 530 techs the chain leaves at
+  their click, by a median of 23 seconds and at most 299. A tech with no
+  landed age-up after it is still dated off its click, and is early
+  wherever villagers were queued ahead of it.
 - **mgz misreads `SPECIAL` and `UNGARRISON` unit ids** by a byte (an id times
   256, plus the byte before it), so `created_by` skips them, and
   `game.unshifted` reads them back where they are wanted. In most games the result is over

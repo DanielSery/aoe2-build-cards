@@ -284,7 +284,7 @@ def check_loom_waits_for_the_villagers_ahead(fail) -> None:
         opening.events = sorted([loom, Event(375.0, "research", [100], what="Feudal Age", takes=130.0)]
                                 + [Event(200.0, "queue", [100], what="Villager", takes=25.0) for _ in range(4)],
                                 key=lambda e: e.t)
-        opening.__dict__["_counted"] = [(t, None) for t in trained]
+        opening.__dict__["spawns"] = [(t, None) for t in trained]
         return round(opening._tc_done(loom), 3)
 
     for trained, wanted, why in (([225.0, 250.0, 275.0, 300.0], 325.0, "four villagers queued ahead"),

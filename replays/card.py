@@ -19,7 +19,6 @@ import uuid
 from collections import Counter, defaultdict
 from functools import cached_property
 from pathlib import Path
-from typing import Callable
 
 from .game import (AGE_TECHS, CASTLES, DATA, DROPSITES, FIELDS, PRODUCTION, TOWERS, UNIT_LINES, Event,
                    PlayerLog, Replay)
@@ -323,12 +322,15 @@ class Opening:
 
     # ---------------------------------------------------------- villagers
 
-    def _busy(self, dated: Callable[[Event], float] | None = None) -> list[tuple[float, float]]:
-        spans = list(self.ages.values())
+    @cached_property
+    def _loom(self) -> Event | None:
         loom = [e for e in self.events if e.kind == "research" and e.what == "Loom" and set(e.ids) & self.log.tcs]
-        if loom:
-            done = (dated or self._tc_done)(loom[-1])
-            spans.append((done - loom[-1].takes, done))
+        return loom[-1] if loom else None
+
+    def _busy(self, loom_done: float | None) -> list[tuple[float, float]]:
+        spans = list(self.ages.values())
+        if self._loom and loom_done is not None:
+            spans.append((loom_done - self._loom.takes, loom_done))
         return sorted(spans)
 
     def _tc_start(self, t: float) -> float:
@@ -339,12 +341,12 @@ class Opening:
                 return self.ages[age][1]
         return t
 
-    def _tc_done(self, research: Event) -> float:
+    def _tc_done(self, research: Event, spawns: list[tuple[float, int | None]] | None = None) -> float:
         """When a Town Centre tech was done: its click and its time, or later
         if villagers were queued ahead of it, as whichever of `_chained` and
         `_queued_ahead` says later."""
         begun = self._tc_start(research.t)
-        done = max(self._chained(research), self._queued_ahead(research) + research.takes)
+        done = max(self._chained(research), self._queued_ahead(research, spawns) + research.takes)
         for start, _ in self.ages.values():
             if begun < start <= done:
                 return start - 0.001
@@ -383,15 +385,14 @@ class Opening:
                 return start - 0.001
         return done
 
-    def _queued_ahead(self, research: Event) -> float:
+    def _queued_ahead(self, research: Event, spawns: list[tuple[float, int | None]] | None = None) -> float:
         """When the villagers queued ahead of a Town Centre tech had come out.
         Every villager trained before the next age-up started was queued ahead
         of the tech, except those clicked after it, and none came out sooner
         than if every click had been paid for at once. That dates Loom clicked
         behind a full queue when the Town Centre went idle before the age-up,
         which leaves `_chained` nothing to count back from. "Trained" is
-        `spawns` read with the tech dated by `_chained`, so this is an
-        inference, not a bound."""
+        what `spawns` reads, so this is an inference, not a bound."""
         tc = set(research.ids) & self.log.tcs
         nxt = min((age for age, click in self.clicked.items() if click > research.t and age in self.ages),
                   key=lambda age: self.clicked[age], default=None)
@@ -423,17 +424,23 @@ class Opening:
         # Villagers out before the first click could have trained one came
         # with the civilisation, not from this queue.
         first = ends[0] - (1 - SPACING) * VILLAGER_SECONDS
-        ahead = min(sum(1 for t, _ in self._counted if first <= t < horizon) - after, len(ends))
+        trained = sum(1 for t, _ in (self.spawns if spawns is None else spawns) if first <= t < horizon)
+        ahead = min(trained - after, len(ends))
         return ends[ahead - 1] if ahead > 0 else research.t
 
     @cached_property
-    def _counted(self) -> list[tuple[float, int | None]]:
-        """The villagers as they read with Loom dated by `_chained` alone."""
-        return self._spawns(self._busy(self._chained))
-
-    @cached_property
     def spawns(self) -> list[tuple[float, int | None]]:
-        return self._spawns(self._busy())
+        """Loom takes a villager's time from the queue, and when depends on
+        how many villagers were ahead of it, which depends on where it was:
+        each is read again with the other's answer until Loom stops moving.
+        It only ever moves later, and never past the age-up it came before."""
+        done = self._chained(self._loom) if self._loom else None
+        while True:
+            out = self._spawns(self._busy(done))
+            later = self._tc_done(self._loom, out) if self._loom else done
+            if done is None or later <= done + 0.5:
+                return out
+            done = later
 
     def _spawns(self, busy: list[tuple[float, float]]) -> list[tuple[float, int | None]]:
         """(time, id) for every villager the Town Centre trained, the id None
