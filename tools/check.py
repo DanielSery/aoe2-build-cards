@@ -274,6 +274,25 @@ def check_loom_waits_for_the_villagers_ahead(fail) -> None:
         if done(between) != wanted:
             fail(f"with {why}, Loom was done at {done(between)}, wanted {wanted}")
 
+    # The Town Centre idle at the Feudal click leaves nothing to count back
+    # from; the villagers trained before it say how many were ahead of Loom.
+    def ahead(trained):
+        opening = object.__new__(Opening)
+        opening.ages, opening.clicked = {"feudal": (375.0, 505.0)}, {"feudal": 375.0}
+        opening.log = Stub(tcs={100})
+        loom = Event(210.0, "research", [100], what="Loom", takes=25.0)
+        opening.events = sorted([loom, Event(375.0, "research", [100], what="Feudal Age", takes=130.0)]
+                                + [Event(200.0, "queue", [100], what="Villager", takes=25.0) for _ in range(4)],
+                                key=lambda e: e.t)
+        opening.__dict__["_counted"] = [(t, None) for t in trained]
+        return round(opening._tc_done(loom), 3)
+
+    for trained, wanted, why in (([225.0, 250.0, 275.0, 300.0], 325.0, "four villagers queued ahead"),
+                                 ([225.0, 250.0], 275.0, "two of the four clicks paid for")):
+        if ahead(trained) != wanted:
+            fail(f"with {why} and the Town Centre idle at the click, Loom was done at {ahead(trained)}, "
+                 f"wanted {wanted}")
+
 
 def check_a_move_joining_new_villagers_shares_their_place(fail) -> None:
     """Villagers moved to where new ones go are written with them, the number
@@ -366,8 +385,9 @@ def check_a_gather_point_moved_for_the_villager(fail) -> None:
 def check_villagers_let_out_go_to_the_gather_point(fail) -> None:
     """Villagers garrisoned in the Town Centre and let out again walk to its
     gather point: in, gather point on the stone, out, is three to the stone.
-    Garrisoning carries its ids a byte out of place, and one given another
-    command since is out already."""
+    Garrisoning carries its ids a byte out of place, one given another
+    command since is out already, and one no other command ever names is
+    let out like the rest."""
     from datetime import timedelta
     from types import SimpleNamespace as Stub
     from replays.game import PlayerLog
@@ -380,13 +400,13 @@ def check_villagers_let_out_go_to_the_gather_point(fail) -> None:
     log.r = Stub(nodes={}, last_starting_id=100, commanded={201, 202, 203, 204})
     log.tcs, log.start_villagers, log.soldiers, log.cancelled = {50}, set(), set(), set()
     log.forward = lambda x, y: False
-    log.actions = [command(10.0, "SPECIAL", [201 << 8, 202 << 8, 203 << 8, 204 << 8], target_id=50),
+    log.actions = [command(10.0, "SPECIAL", [201 << 8, 202 << 8, 203 << 8, 204 << 8, 205 << 8], target_id=50),
                    command(11.0, "MOVE", [204]),
                    command(12.0, "GATHER_POINT", [50], target_id=7, target_type=102),
                    command(13.0, "UNGARRISON", [(50 << 8) + 1])]
     out = [(e.t, e.ids, e.job) for e in log.events() if e.kind == "assign"]
-    if out != [(13.0, [201, 202, 203], "stone")]:
-        fail(f"letting them out read as {out}, wanted three to the stone at 13s")
+    if out != [(13.0, [201, 202, 203, 205], "stone")]:
+        fail(f"letting them out read as {out}, wanted four to the stone at 13s")
 
 
 def check_neighbouring_rows_name_a_work_once(fail) -> None:
@@ -406,6 +426,61 @@ def check_neighbouring_rows_name_a_work_once(fail) -> None:
     if read(_merged([row(3, True), row(1, True)])) != [("3", True), ("1", True)]:
         fail("two rows with a move each were merged")
 
+def check_sheep_between_hunts_are_no_move(fail) -> None:
+    """Sheep eaten between two hunts for under a minute and a half were what
+    the crew ate while the next animal came in, so the card keeps it on the
+    hunt; for longer, it was on the sheep."""
+    from types import SimpleNamespace as Stub
+    from replays.card import Opening
+    from replays.game import Event
+
+    opening = object.__new__(Opening)
+    opening.ages, opening.end, opening.r = {}, 900.0, Stub(nodes={})
+    opening.log = Stub(tcs=set(), start_villagers=[1, 2])
+    opening.__dict__["spawns"] = []
+    opening.events = sorted([
+        Event(10.0, "assign", [1, 2], job="sheep"),
+        Event(100.0, "assign", [1, 2], job="boar"),
+        Event(200.0, "assign", [1, 2], job="sheep"),
+        Event(250.0, "assign", [1], job="deer"),
+        Event(320.0, "assign", [2], job="boar"),
+        Event(400.0, "assign", [1, 2], job="sheep")], key=lambda e: e.t)
+    steps = [(t, v, src, dst) for t, v, src, dst, *_ in opening.transitions()]
+    wanted = [(10.0, 1, "idle", "sheep"), (10.0, 2, "idle", "sheep"), (100.0, 1, "sheep", "hunt"),
+              (100.0, 2, "sheep", "hunt"), (200.0, 2, "hunt", "sheep"), (320.0, 2, "sheep", "hunt"),
+              (400.0, 1, "hunt", "sheep"), (400.0, 2, "hunt", "sheep")]
+    if steps != wanted:
+        fail(f"the steps were {steps}, wanted {wanted}")
+
+
+def check_a_building_goes_with_its_builders(fail) -> None:
+    """A house or a barracks no step claimed is drawn on the row of its
+    builders' work, not on whatever row came last; with no such row in the
+    phase it is only mentioned."""
+    from types import SimpleNamespace as Stub
+    from replays.card import JOB_ICON, Opening, building_icon
+    from replays.game import Event
+
+    opening = object.__new__(Opening)
+    opening.ages, opening.end = {"feudal": (200.0, 330.0)}, 600.0
+    opening.events = [Event(150.0, "build", [2], building="Barracks", site=("Barracks", 150.0)),
+                      Event(160.0, "build", [1], building="House", site=("House", 160.0)),
+                      Event(250.0, "build", [2], building="House", site=("House", 250.0))]
+    opening.log = Stub(tcs=set(), start_villagers=[])
+    opening.__dict__["spawns"] = []
+    opening.transitions = lambda: [(5.0, 1, None, "sheep", set(), set()), (20.0, 2, None, "wood", set(), set()),
+                                   (100.0, 3, None, "hunt", set(), set()), (240.0, 3, "hunt", "gold", set(), set())]
+    card = opening.card("x", "", "")
+    dark = [[i.get("icon") or i.get("value") for i in step["to"]["items"]] for step in card["sections"][0]["steps"]]
+    going = card["sections"][1]["steps"][-1]
+    wanted = [["1", JOB_ICON["sheep"], building_icon("House")], ["1", JOB_ICON["wood"], building_icon("Barracks")],
+              ["1", JOB_ICON["hunt"]]]
+    if dark != wanted:
+        fail(f"the Dark Age rows were {dark}, wanted {wanted}")
+    if [i.get("icon") for i in going["extras"]] != [building_icon("House")] or len(going["moveTo"]["items"]) != 2:
+        fail(f"a house with no row of its builders' was {going}, wanted it only mentioned")
+
+
 
 CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_forward_is_at_the_enemy, check_a_cancelled_building_is_not_built,
@@ -418,7 +493,9 @@ CHECKS = (check_a_game_link_names_its_match, check_a_strategy_reads_in_order,
           check_a_mill_goes_with_the_berries,
           check_a_gather_point_moved_for_the_villager,
           check_villagers_let_out_go_to_the_gather_point,
-          check_neighbouring_rows_name_a_work_once)
+          check_neighbouring_rows_name_a_work_once,
+          check_sheep_between_hunts_are_no_move,
+          check_a_building_goes_with_its_builders)
 
 
 def main() -> int:

@@ -19,6 +19,7 @@ import uuid
 from collections import Counter, defaultdict
 from functools import cached_property
 from pathlib import Path
+from typing import Callable
 
 from .game import (AGE_TECHS, CASTLES, DATA, DROPSITES, FIELDS, PRODUCTION, TOWERS, UNIT_LINES, Event,
                    PlayerLog, Replay)
@@ -52,6 +53,7 @@ REACTED = 5.0       # a gather point moved this soon before a villager's estimat
 BRIEF = 30.0        # a task replaced this soon, or before the villager got there, is not on the card
 ERRAND = 15.0       # but one to gold, stone or a building site is from this soon: "50 stone", a camp for others
 ERRANDS = {"gold", "stone"}
+FILLER = 90.0       # sheep eaten between two hunts for under this were eaten while the next animal came in
 FIRST_ORDER = 15.0  # how long before a step a camp its villager put up, or a deer it was sent at, still belongs to it
 ON_THE_WAY = 45.0   # and how long after: a camp the same villagers put up later is a camp of its own
 MERGE = 45.0        # commands this close with the same meaning are one row
@@ -220,7 +222,10 @@ def _begun(plan: list[tuple], here: tuple[float, float] | None) -> list[tuple]:
     and long enough to reach its first target from wherever the previous
     command had got them to: sent to the wood and on to the boar before
     reaching the trees, they never cut any. The walk is estimated in a
-    straight line at a villager's speed."""
+    straight line at a villager's speed. Sheep between two hunts count from
+    `FILLER`: the sheep under the Town Centre are what a crew eats while the
+    next boar is lured or deer pushed, and a build order says nothing of
+    it."""
     runs: list[list[tuple]] = []
     for p in plan:
         if runs and runs[-1][-1][1] == p[1]:
@@ -242,6 +247,8 @@ def _begun(plan: list[tuple], here: tuple[float, float] | None) -> list[tuple]:
             share = min(1.0, ((run[j + 1][0] if j + 1 < len(run) else ends) - p[0]) / walk) if walk else 1.0
             here = (here[0] + (at[0] - here[0]) * share, here[1] + (at[1] - here[1]) * share)
         brief = ERRAND if any(p[1] in ERRANDS or p[4] for p in run) else BRIEF
+        if run[0][1] == "sheep" and 0 < k < len(runs) - 1 and runs[k - 1][0][1] == runs[k + 1][0][1] == "hunt":
+            brief = FILLER
         if k + 1 == len(runs) or k == 0 and run[0][1] == "idle" or ends - run[0][0] >= brief and ends >= arrive:
             kept.extend(run)
     return kept
@@ -316,11 +323,11 @@ class Opening:
 
     # ---------------------------------------------------------- villagers
 
-    def _busy(self) -> list[tuple[float, float]]:
+    def _busy(self, dated: Callable[[Event], float] | None = None) -> list[tuple[float, float]]:
         spans = list(self.ages.values())
         loom = [e for e in self.events if e.kind == "research" and e.what == "Loom" and set(e.ids) & self.log.tcs]
         if loom:
-            done = self._tc_done(loom[-1])
+            done = (dated or self._tc_done)(loom[-1])
             spans.append((done - loom[-1].takes, done))
         return sorted(spans)
 
@@ -334,15 +341,24 @@ class Opening:
 
     def _tc_done(self, research: Event) -> float:
         """When a Town Centre tech was done: its click and its time, or later
-        if villagers were queued ahead of it. The queue is first in, first
-        out, and the next age-up's start is known from its landing, so if the
-        Town Centre was still busy at that click, the tech was done just in
-        time for whatever was queued in between: Loom clicked behind three
-        villagers, with Feudal next, is done when Feudal starts. That holds
-        only if each thing in between waited for its turn; one clicked as its
-        turn came may have found the Town Centre idle for any time before it.
-        A villager clicked without the food counts as one that waited, so the
-        answer errs early, never late."""
+        if villagers were queued ahead of it, as whichever of `_chained` and
+        `_queued_ahead` says later."""
+        begun = self._tc_start(research.t)
+        done = max(self._chained(research), self._queued_ahead(research) + research.takes)
+        for start, _ in self.ages.values():
+            if begun < start <= done:
+                return start - 0.001
+        return done
+
+    def _chained(self, research: Event) -> float:
+        """The queue is first in, first out, and the next age-up's start is
+        known from its landing, so if the Town Centre was still busy at that
+        click, the tech was done just in time for whatever was queued in
+        between: Loom clicked behind three villagers, with Feudal next, is
+        done when Feudal starts. That holds only if each thing in between
+        waited for its turn; one clicked as its turn came may have found the
+        Town Centre idle for any time before it. A villager clicked without
+        the food counts as one that waited."""
         begun = self._tc_start(research.t)
         done = begun + research.takes
         tc = set(research.ids) & self.log.tcs
@@ -367,8 +383,59 @@ class Opening:
                 return start - 0.001
         return done
 
+    def _queued_ahead(self, research: Event) -> float:
+        """When the villagers queued ahead of a Town Centre tech had come out.
+        Every villager trained before the next age-up started was queued ahead
+        of the tech, except those clicked after it, and none came out sooner
+        than if every click had been paid for at once. That dates Loom clicked
+        behind a full queue when the Town Centre went idle before the age-up,
+        which leaves `_chained` nothing to count back from. "Trained" is
+        `spawns` read with the tech dated by `_chained`, so this is an
+        inference, not a bound."""
+        tc = set(research.ids) & self.log.tcs
+        nxt = min((age for age, click in self.clicked.items() if click > research.t and age in self.ages),
+                  key=lambda age: self.clicked[age], default=None)
+        if nxt is None:
+            return research.t
+        clicks_until, horizon = self.clicked[nxt], self.ages[nxt][0]
+        if any(e.kind == "build" and e.building == "Town Center" and e.t < horizon for e in self.events):
+            return research.t
+        last = {e.what: e for e in self.events if e.kind == "research"}
+        ends: list[float] = []
+        free, after = 0.0, 0
+        for e in self.events:
+            if not set(e.ids) & tc or e.t >= clicks_until:
+                continue
+            if e.kind == "queue" and e.what == "Villager":
+                for _ in range(e.amount):
+                    free = max(free, e.t) + e.takes
+                    if e.t < research.t:
+                        ends.append(free)
+                    else:
+                        after += 1
+            elif e.kind == "research" and e.what in AGE_TECHS:
+                if AGE_TECHS[e.what] in self.ages and self.clicked[AGE_TECHS[e.what]] == e.t:
+                    free = max(free, self.ages[AGE_TECHS[e.what]][1])
+            elif e.kind == "research" and last[e.what] is e:
+                free = max(free, e.t) + e.takes
+        if not ends:
+            return research.t
+        # Villagers out before the first click could have trained one came
+        # with the civilisation, not from this queue.
+        first = ends[0] - (1 - SPACING) * VILLAGER_SECONDS
+        ahead = min(sum(1 for t, _ in self._counted if first <= t < horizon) - after, len(ends))
+        return ends[ahead - 1] if ahead > 0 else research.t
+
+    @cached_property
+    def _counted(self) -> list[tuple[float, int | None]]:
+        """The villagers as they read with Loom dated by `_chained` alone."""
+        return self._spawns(self._busy(self._chained))
+
     @cached_property
     def spawns(self) -> list[tuple[float, int | None]]:
+        return self._spawns(self._busy())
+
+    def _spawns(self, busy: list[tuple[float, float]]) -> list[tuple[float, int | None]]:
         """(time, id) for every villager the Town Centre trained, the id None
         where nobody ever commanded the villager so the replay never names it.
 
@@ -380,7 +447,6 @@ class Opening:
         Between two commanded villagers the Town Centre is assumed to have
         kept training while queue clicks were outstanding and the next one
         still had room, and never while it was researching an age or Loom."""
-        busy = self._busy()
         step = VILLAGER_SECONDS
 
         def clear(end: float) -> float:
@@ -636,14 +702,26 @@ class Opening:
                 row[half] -= placed
                 placed |= row[half]
 
-        def attach(t: float, item: dict, part: str, work: str | None = None) -> None:
+        working: dict = defaultdict(list)
+        for t, v, _, dst, *_ in moved:
+            working[v].append((t, dst))
+
+        def work_of(ids: list, t: float) -> str | None:
+            jobs = Counter(next((job for when, job in reversed(working[v]) if when <= t), None) for v in ids)
+            jobs.pop(None, None)
+            return jobs.most_common(1)[0][0] if jobs else None
+
+        def attach(t: float, item: dict, part: str, work: str | None = None, by: str | None = None) -> None:
             """Onto the row being worked when it happened, never across a phase
             band: a castle dropped on landing is Castle Age, whatever came last.
             Never onto a trip forward either, or a house at home reads as built
             at the enemy's. A camp or a mill goes onto the latest row sending
             villagers to the work it serves, if one has none yet: built a minute
             after its builder reached the berries, a mill drawn beside the boar
-            reads as the hunters'."""
+            reads as the hunters'. Anything else goes onto the latest row
+            sending villagers to its builders' work (`by`), and where the phase
+            has none it is only mentioned: a barracks a wood villager put up,
+            drawn beside the boar, reads as the hunters' too."""
             here = [row for row in rows if self.section_of(row["t"]) == self.section_of(t)
                     and not row["research"] and row["to"] != "forward"]
             if not here:
@@ -658,6 +736,9 @@ class Opening:
                            and item["icon"] not in {i.get("icon") for _, i in row["built"]}
                            | {building_icon(name) for name, _ in row["via_moved"] | row["via_new"]}]
                 target = serving[-1] if serving else target
+            elif by:
+                theirs = [row for row in here if row["t"] <= t and row["to"] == by]
+                target, part = (theirs[-1], part) if theirs else (target, "extras" if target["to"] else part)
             target[part].append((t, item))
 
         # A tech is dated by its last click, since none can follow the one
@@ -676,7 +757,8 @@ class Opening:
                     walled.add((self.section_of(e.t), e.building))
                 key = building_icon(e.building)
                 serves = e.building in DROPSITES and e.job != "forward" and key
-                attach(e.t, icon(key) if key else text(e.building), "built", card_job(e.job) if serves else None)
+                attach(e.t, icon(key) if key else text(e.building), "built", card_job(e.job) if serves else None,
+                       None if serves else work_of(e.ids, e.t))
             elif e.kind == "research" and e.what not in AGE_TECHS and last[e.what] is e:
                 key = tech_icon(e.what)
                 item = icon(key) if key else text(e.what)

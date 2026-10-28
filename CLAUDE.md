@@ -338,8 +338,20 @@ and `npm run preview` proxy `/api` to it.
   then the click is all there is. A villager clicked without the food reads
   as one that waited, so the date errs early, never late. Over 155 games this
   moves 85 of 706 Town Centre techs, nearly all Loom, by a median of 18
-  seconds and at most 84. A tech with no busy age-up after it — the Town
-  Centre idle when the age-up was clicked, or none clicked — is still dated
+  seconds and at most 84. With the Town Centre idle when the age-up was
+  clicked there is nothing to count back from, so the villagers say it
+  instead (`_queued_ahead`): every villager trained before the age-up
+  started was queued ahead of the tech, except those clicked after it, and
+  none came out sooner than if every click had been paid for at once. Loom
+  clicked at 4:36 behind three villagers, with the Town Centre idle two
+  seconds before Feudal at 6:18, was done at 6:15; dated off its click it was
+  done at 5:01, and the 25 seconds it took from the queue in the wrong place
+  put a villager who went to the wood on the boar. "Trained" is the card's
+  own count (`spawns`, read once with Loom dated the old way), so this is an
+  inference, not a bound: where the chain applies too, it stays at or under
+  the chain for 80 of 85 techs. Over 156 games it moves 113 of the 530
+  techs the chain leaves at their click, by a median of 23 seconds and four
+  of them by over 90. A tech with no landed age-up after it is still dated
   off its click, and is early wherever villagers were queued ahead of it.
 - **mgz misreads `SPECIAL` and `UNGARRISON` unit ids** by a byte (an id times
   256, plus the byte before it), so `created_by` skips them, and
@@ -352,11 +364,15 @@ and `npm run preview` proxy `/api` to it.
   `UNGARRISON` from it, so in, gather point on the stone, out is a move to
   the stone (`PlayerLog.events`) — how a castle drop's three extra stone
   miners moved while the Town Centre was researching Castle Age, which the
-  card had missed. A decoded id is believed only if another command names
-  it, and a villager given any command since, or sent back to work by the
-  Town Centre, is out already. Over 40 games 198 players let 5599 villagers
-  out to a gather point in the first 25 minutes, most of them to the boar
-  and the deer, and none of it had been on a card.
+  card had missed. A villager given any command since, or sent back to work
+  by the Town Centre, is out already. A decoded id is believed even when no
+  other command names it: a villager let out onto the gold and later onto
+  the stone, and given nothing else all game, is named only there. Over 80
+  games 135 of 19148 garrisoned ids were never named anywhere else, and
+  none was an id that could not have been a unit by then. Over 40 games
+  198 players let 5599 villagers out to a gather point in the first 25
+  minutes, most of them to the boar and the deer, and none of it had been
+  on a card.
 - **An empty selection is the units the player last commanded.** A move or
   a right-click with no unit list goes to whoever that player last gave any
   unit's command to — a move, a right-click, a build, a stance
@@ -414,7 +430,11 @@ and `npm run preview` proxy `/api` to it.
   villagers to the work it serves that has no such camp yet, or on the way
   like a house when there is none (a mill put up a minute after its builder
   reached the berries had been drawn beside the boar), a mill put down where
-  a deer stood is the hunters' (`PlayerLog.dropsite_job`), and walls — a
+  a deer stood is the hunters' (`PlayerLog.dropsite_job`), anything else no
+  step claimed — a house, a barracks — goes on the latest row of the phase
+  sending villagers to its builders' work, and is only mentioned, in the
+  extras, where the phase has none (a barracks a wood villager put up had
+  been drawn beside the boar, as if the hunters had), and walls — a
   dragged wall is a `WALL` command, not a `BUILD` — are drawn once per phase
   band. A tech with no icon of its own wears its unit's if it is that unit's
   upgrade (Man-at-Arms), as its button in the game does, and a unit with no
@@ -489,7 +509,12 @@ and `npm run preview` proxy `/api` to it.
   its first target, since stepping between carcasses or trees is the work
   itself. Over 106 cards, 30 seconds rather than 15 drops 4% of villager
   steps and 1.5% of rows, most of them between the sheep and the hunt, and
-  the exception keeps 40 of those steps and 21 of the rows.
+  the exception keeps 40 of those steps and 21 of the rows. Sheep eaten
+  between two hunts count from 90 seconds (`FILLER`): the sheep under the
+  Town Centre are what a crew eats while the next boar is lured or deer
+  pushed, and a card that drew it read "5 sheep ← boar", "5 boar ← sheep",
+  "5 sheep ← boar" inside two minutes. Over 40 games that is 309 of 443
+  such stints; the median is 67 seconds.
 - **A row's new villagers are the first column, its moved ones the second
   — unless they went to the same place.** Three off the sheep and one new to
   the hunt is "4 hunt ← 3 sheep", one place. A move shares the row beside it

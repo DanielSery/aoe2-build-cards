@@ -441,10 +441,7 @@ class PlayerLog:
                 for tc in set(p.get("object_ids", [])) & self.tcs:
                     gathering[tc] = out[-1]
             elif kind == "SPECIAL" and p.get("target_id") in self.tcs:
-                # Read a byte out of place, an id is believed only if some
-                # other command names it too.
-                inside[p["target_id"]] |= {i for i in self.villagers(unshifted(p.get("object_ids", [])))
-                                           if i in self.r.commanded}
+                inside[p["target_id"]] |= set(self.villagers(unshifted(p.get("object_ids", []))))
             elif kind == "UNGARRISON":
                 for tc in set(unshifted(p.get("object_ids", []))) & self.tcs:
                     out_again, point = inside.pop(tc, set()), gathering.get(tc)
